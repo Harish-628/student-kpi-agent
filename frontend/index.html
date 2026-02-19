@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student KPI Management System - Login</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <div class="logo-icon">📊</div>
+                <h1>KPI Management System</h1>
+                <p class="subtitle">Student Performance Tracking & Analysis</p>
+            </div>
+
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input 
+                        type="email" 
+                        id="email" 
+                        name="email" 
+                        placeholder="Enter your email"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="password-input-wrapper">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            placeholder="Enter your password"
+                            required
+                        >
+                        <button type="button" class="toggle-password" id="togglePassword">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="role">User Role</label>
+                    <select id="role" name="role" required>
+                        <option value="">Select your role</option>
+                        <option value="student">Student</option>
+                        <option value="faculty">Faculty/Teacher</option>
+                        <option value="coordinator">Department Coordinator</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+                </div>
+
+                <div class="form-group checkbox">
+                    <input type="checkbox" id="remember" name="remember">
+                    <label for="remember">Remember me</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-login">Sign In</button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="#signup" class="signup-link">Create one</a></p>
+                <a href="#forgot" class="forgot-password">Forgot password?</a>
+            </div>
+        </div>
+
+        <div class="auth-info-panel">
+            <div class="info-item">
+                <div class="info-icon">🎓</div>
+                <h3>For Students</h3>
+                <p>Track your academic progress and KPIs</p>
+            </div>
+            <div class="info-item">
+                <div class="info-icon">👨‍🏫</div>
+                <h3>For Faculty</h3>
+                <p>Monitor student performance and analytics</p>
+            </div>
+            <div class="info-item">
+                <div class="info-icon">📋</div>
+                <h3>For Coordinators</h3>
+                <p>Manage department-wide KPI tracking</p>
+            </div>
+            <div class="info-item">
+                <div class="info-icon">⚙️</div>
+                <h3>For Admins</h3>
+                <p>System administration and user management</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Credentials Modal -->
+    <div id="demoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Demo Credentials</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <table class="credentials-table">
+                    <tr>
+                        <th>Role</th>
+                        <th>Email</th>
+                        <th>Password</th>
+                    </tr>
+                    <tr>
+                        <td>Student</td>
+                        <td>student@example.com</td>
+                        <td>password123</td>
+                    </tr>
+                    <tr>
+                        <td>Faculty</td>
+                        <td>faculty@example.com</td>
+                        <td>password123</td>
+                    </tr>
+                    <tr>
+                        <td>Coordinator</td>
+                        <td>coordinator@example.com</td>
+                        <td>password123</td>
+                    </tr>
+                    <tr>
+                        <td>Admin</td>
+                        <td>admin@example.com</td>
+                        <td>admin123</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>

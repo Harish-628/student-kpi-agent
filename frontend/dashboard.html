@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Student KPI Management System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="dashboard-body">
+    <!-- Navigation Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">📊</span>
+                <span class="logo-text">KPI System</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <h4 class="nav-section-title">Main</h4>
+                <ul id="mainNav">
+                    <li><a href="#dashboard" class="nav-link active" data-section="dashboard">
+                        <span class="nav-icon">🏠</span>
+                        <span>Dashboard</span>
+                    </a></li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <h4 class="nav-section-title">Management</h4>
+                <ul id="managementNav">
+                    <!-- Populated based on role -->
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <h4 class="nav-section-title">Reports</h4>
+                <ul id="reportsNav">
+                    <li><a href="#analytics" class="nav-link" data-section="analytics">
+                        <span class="nav-icon">📈</span>
+                        <span>Analytics</span>
+                    </a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-details">
+                    <div class="user-name" id="userName">User Name</div>
+                    <div class="user-role" id="userRole">Role</div>
+                </div>
+            </div>
+            <button class="btn btn-logout" id="logoutBtn">
+                <span>🚪</span> Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-left">
+                <button class="toggle-sidebar" id="toggleSidebar">☰</button>
+                <h1 id="pageTitle">Dashboard</h1>
+            </div>
+            <div class="header-right">
+                <div class="search-box">
+                    <input type="text" placeholder="Search...">
+                    <button>🔍</button>
+                </div>
+                <div class="notifications">
+                    <button class="notification-btn">
+                        <span class="notification-icon">🔔</span>
+                        <span class="notification-badge">3</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Sections -->
+        <div class="content-wrapper">
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="content-section active">
+                <div class="section-title">
+                    <h2>Welcome Back! 👋</h2>
+                    <p id="dashboardSubtitle" class="subtitle"></p>
+                </div>
+
+                <!-- KPI Overview Cards -->
+                <div class="kpi-cards-grid" id="kpiCardsContainer">
+                    <!-- Populated dynamically based on role -->
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-row">
+                    <div class="chart-container">
+                        <h3>KPI Distribution</h3>
+                        <canvas id="kpiChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Performance Trends</h3>
+                        <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="recent-activity">
+                    <h3>Recent Activity</h3>
+                    <div class="activity-list" id="activityList">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Students Section (Faculty, Coordinator, Admin) -->
+            <section id="students-section" class="content-section">
+                <div class="section-title">
+                    <h2>Student Management</h2>
+                    <button class="btn btn-primary" id="addStudentBtn">+ Add Student</button>
+                </div>
+
+                <div class="filters-bar">
+                    <input type="text" id="searchStudent" placeholder="Search students...">
+                    <select id="filterDepartment">
+                        <option value="">All Departments</option>
+                    </select>
+                    <select id="filterYear">
+                        <option value="">All Years</option>
+                        <option value="1">Year 1</option>
+                        <option value="2">Year 2</option>
+                        <option value="3">Year 3</option>
+                        <option value="4">Year 4</option>
+                    </select>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Year</th>
+                                <th>KPI Score</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- KPI Section -->
+            <section id="kpi-section" class="content-section">
+                <div class="section-title">
+                    <h2>KPI Tracking</h2>
+                    <button class="btn btn-primary" id="addKPIBtn">+ Add KPI Data</button>
+                </div>
+
+                <div class="kpi-form-container" id="kpiFormContainer" style="display: none;">
+                    <form id="kpiForm" class="kpi-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="studentSelect">Select Student</label>
+                                <select id="studentSelect" required>
+                                    <option value="">-- Choose Student --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="kpi-inputs-grid">
+                            <div class="form-group">
+                                <label for="internships">Internships</label>
+                                <input type="number" id="internships" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="certifications">Certifications</label>
+                                <input type="number" id="certifications" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="hackathons">Hackathons</label>
+                                <input type="number" id="hackathons" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="publications">Publications</label>
+                                <input type="number" id="publications" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="workshops">Workshops</label>
+                                <input type="number" id="workshops" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="projects">Projects</label>
+                                <input type="number" id="projects" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="clubActivities">Club Activities</label>
+                                <input type="number" id="clubActivities" min="0" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="industrialVisits">Industrial Visits</label>
+                                <input type="number" id="industrialVisits" min="0" value="0">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Save KPI Data</button>
+                            <button type="button" class="btn btn-secondary" id="cancelKPIBtn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="kpi-list-container">
+                    <h3>KPI Records</h3>
+                    <div class="kpi-records" id="kpiRecords">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics-section" class="content-section">
+                <div class="section-title">
+                    <h2>Analytics & Reports</h2>
+                </div>
+
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <h3>Department Performance</h3>
+                        <canvas id="departmentChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>KPI Category Performance</h3>
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>Year-wise Distribution</h3>
+                        <canvas id="yearChart"></canvas>
+                    </div>
+                    <div class="analytics-card">
+                        <h3>Career Readiness Score</h3>
+                        <canvas id="readinessChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="export-actions">
+                    <button class="btn btn-secondary" id="exportPDFBtn">📄 Export as PDF</button>
+                    <button class="btn btn-secondary" id="exportExcelBtn">📊 Export as Excel</button>
+                </div>
+            </section>
+
+            <!-- User Management Section (Admin Only) -->
+            <section id="users-section" class="content-section">
+                <div class="section-title">
+                    <h2>User Management</h2>
+                    <button class="btn btn-primary" id="addUserBtn">+ Add User</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Department</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section id="settings-section" class="content-section">
+                <div class="section-title">
+                    <h2>Settings</h2>
+                </div>
+
+                <div class="settings-container">
+                    <div class="settings-card">
+                        <h3>Profile Settings</h3>
+                        <form id="profileForm" class="settings-form">
+                            <div class="form-group">
+                                <label for="fullName">Full Name</label>
+                                <input type="text" id="fullName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="emailSettings">Email</label>
+                                <input type="email" id="emailSettings" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="department">Department</label>
+                                <input type="text" id="department" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Settings</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Change Password</h3>
+                        <form id="passwordForm" class="settings-form">
+                            <div class="form-group">
+                                <label for="currentPassword">Current Password</label>
+                                <input type="password" id="currentPassword" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="newPassword">New Password</label>
+                                <input type="password" id="newPassword" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="confirmPassword">Confirm Password</label>
+                                <input type="password" id="confirmPassword" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update Password</button>
+                        </form>
+                    </div>
+
+                    <div class="settings-card">
+                        <h3>Preferences</h3>
+                        <div class="preference-item">
+                            <label>
+                                <input type="checkbox" checked> Email Notifications
+                            </label>
+                        </div>
+                        <div class="preference-item">
+                            <label>
+                                <input type="checkbox" checked> Dark Mode
+                            </label>
+                        </div>
+                        <div class="preference-item">
+                            <label>
+                                <input type="checkbox"> Weekly Reports
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div id="addStudentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Student</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="addStudentForm" class="modal-form">
+                <div class="form-group">
+                    <label for="newStudentId">Student ID</label>
+                    <input type="text" id="newStudentId" required>
+                </div>
+                <div class="form-group">
+                    <label for="newStudentName">Full Name</label>
+                    <input type="text" id="newStudentName" required>
+                </div>
+                <div class="form-group">
+                    <label for="newStudentDept">Department</label>
+                    <input type="text" id="newStudentDept" required>
+                </div>
+                <div class="form-group">
+                    <label for="newStudentSection">Section</label>
+                    <input type="text" id="newStudentSection" required>
+                </div>
+                <div class="form-group">
+                    <label for="newStudentYear">Year</label>
+                    <select id="newStudentYear" required>
+                        <option value="1">1st Year</option>
+                        <option value="2">2nd Year</option>
+                        <option value="3">3rd Year</option>
+                        <option value="4">4th Year</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Add Student</button>
+                    <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="js/dashboard.js"></script>
+    <script src="js/charts.js"></script>
+</body>
+</html>

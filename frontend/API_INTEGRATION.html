@@ -1,0 +1,476 @@
+<!-- API Integration Configuration Guide -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Integration Guide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        h1, h2, h3 { color: #667eea; }
+        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        h2 { font-size: 1.75rem; margin: 30px 0 15px 0; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .info-box, .success-box { padding: 15px; margin: 15px 0; border-radius: 4px; border-left: 4px solid; }
+        .info-box { background-color: #e3f2fd; border-color: #2196f3; }
+        .success-box { background-color: #d4edda; border-color: #28a745; }
+        code { background-color: #f5f5f5; padding: 2px 6px; border-radius: 4px; color: #d63384; font-family: 'Courier New', monospace; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #667eea; color: white; }
+        tr:nth-child(even) { background-color: #f9fafb; }
+        ul { margin-left: 20px; }
+        li { margin: 8px 0; }
+        footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #666; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 API Integration Guide</h1>
+        <p style="color: #666; font-size: 1.1rem; margin-bottom: 30px;">Complete guide for integrating the frontend with your FastAPI backend</p>
+
+        <h2>📊 API Endpoints Overview</h2>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Endpoint</th>
+                    <th>Method</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>/student/add</code></td>
+                    <td>POST</td>
+                    <td>Add a new student</td>
+                </tr>
+                <tr>
+                    <td><code>/student/{student_id}</code></td>
+                    <td>GET</td>
+                    <td>Get student information</td>
+                </tr>
+                <tr>
+                    <td><code>/kpi/add</code></td>
+                    <td>POST</td>
+                    <td>Add KPI data for a student</td>
+                </tr>
+                <tr>
+                    <td><code>/student/{student_id}/kpi</code></td>
+                    <td>GET</td>
+                    <td>Get student KPI data</td>
+                </tr>
+                <tr>
+                    <td><code>/kpi/upload</code></td>
+                    <td>POST</td>
+                    <td>Bulk upload KPI data via CSV</td>
+                </tr>
+                <tr>
+                    <td><code>/</code></td>
+                    <td>GET</td>
+                    <td>Health check</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>🚀 Step 1: Update API Base URL</h2>
+
+        <p>In <code>js/dashboard.js</code>, add this configuration at the top of the Dashboard class:</p>
+
+        <div class="code-block"><code>class Dashboard {
+    constructor() {
+        // *** ADD THIS ***
+        this.API_BASE_URL = 'http://localhost:8000/api';
+        
+        this.user = this.getSessionUser();
+        if (!this.user) {
+            window.location.href = 'index.html';
+            return;
+        }
+        // ... rest of constructor
+    }</code></div>
+
+        <h2>🔐 Step 2: Implement Authentication</h2>
+
+        <p>Add authentication support to your dashboard:</p>
+
+        <div class="code-block"><code>// Add to auth.js - storeSession method
+storeSession(userData) {
+    const storage = userData.remember ? localStorage : sessionStorage;
+    storage.setItem('user', JSON.stringify({
+        email: userData.email,
+        role: userData.role,
+        token: 'YOUR_JWT_TOKEN_HERE', // Add JWT token
+        loginTime: new Date().toISOString()
+    }));
+}
+
+// Add helper method to get auth token
+getAuthToken() {
+    const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user'));
+    return user?.token || null;
+}</code></div>
+
+        <h2>📝 Step 3: API Request Methods</h2>
+
+        <p>Add these methods to the Dashboard class:</p>
+
+        <div class="code-block"><code>// Fetch with auth headers
+async fetchAPI(endpoint, options = {}) {
+    const token = this.getAuthToken();
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(`${this.API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers
+    });
+    
+    if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+    }
+    
+    return response.json();
+}
+
+// Add Student via API
+async addStudentViaAPI(studentData) {
+    try {
+        const result = await this.fetchAPI('/student/add', {
+            method: 'POST',
+            body: JSON.stringify(studentData)
+        });
+        this.showToast('Student added successfully!', 'success');
+        return result;
+    } catch (error) {
+        this.showToast('Error adding student: ' + error.message, 'error');
+    }
+}
+
+// Get Student Data
+async getStudentViaAPI(studentId) {
+    try {
+        return await this.fetchAPI(`/student/${studentId}`);
+    } catch (error) {
+        this.showToast('Error fetching student: ' + error.message, 'error');
+    }
+}
+
+// Add KPI Data via API
+async addKPIViaAPI(kpiData) {
+    try {
+        const result = await this.fetchAPI('/kpi/add', {
+            method: 'POST',
+            body: JSON.stringify(kpiData)
+        });
+        this.showToast('KPI data saved successfully!', 'success');
+        return result;
+    } catch (error) {
+        this.showToast('Error saving KPI: ' + error.message, 'error');
+    }
+}
+
+// Get Student KPI
+async getStudentKPIViaAPI(studentId) {
+    try {
+        return await this.fetchAPI(`/student/${studentId}/kpi`);
+    } catch (error) {
+        this.showToast('Error fetching KPI: ' + error.message, 'error');
+    }
+}</code></div>
+
+        <h2>🔄 Step 4: Update Event Handlers</h2>
+
+        <p>Modify the form submission handlers to use API:</p>
+
+        <div class="code-block"><code>// Update handleAddStudent method
+async handleAddStudent() {
+    const formData = {
+        student_id: document.getElementById('newStudentId').value,
+        name: document.getElementById('newStudentName').value,
+        department: document.getElementById('newStudentDept').value,
+        section: document.getElementById('newStudentSection').value,
+        year: parseInt(document.getElementById('newStudentYear').value)
+    };
+
+    await this.addStudentViaAPI(formData);
+    document.getElementById('addStudentForm').reset();
+    this.closeModal('addStudentModal');
+    this.loadStudentData(); // Reload from API
+}
+
+// Update handleAddKPI method
+async handleAddKPI() {
+    const studentId = document.getElementById('studentSelect').value;
+    if (!studentId) {
+        this.showToast('Please select a student', 'error');
+        return;
+    }
+
+    const kpiData = {
+        student_id: studentId,
+        internships: parseInt(document.getElementById('internships').value),
+        certifications: parseInt(document.getElementById('certifications').value),
+        hackathons: parseInt(document.getElementById('hackathons').value),
+        publications: parseInt(document.getElementById('publications').value),
+        workshops: parseInt(document.getElementById('workshops').value),
+        projects: parseInt(document.getElementById('projects').value),
+        club_activities: parseInt(document.getElementById('clubActivities').value),
+        industrial_visits: parseInt(document.getElementById('industrialVisits').value)
+    };
+
+    await this.addKPIViaAPI(kpiData);
+    document.getElementById('kpiForm').reset();
+    document.getElementById('kpiFormContainer').style.display = 'none';
+    this.loadKPIData(); // Reload from API
+}</code></div>
+
+        <h2>🔗 Step 5: Backend CORS Configuration</h2>
+
+        <p>Ensure your FastAPI backend has CORS enabled in <code>backend/main.py</code>:</p>
+
+        <div class="code-block"><code>from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from database.database import engine, Base
+from backend.api import routes
+
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Student KPI Agent API")
+
+# *** ADD CORS MIDDLEWARE ***
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8080",      # Development
+        "http://localhost:3000",      # Alternative
+        "https://yourdomain.com"      # Production
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(routes.router)
+
+@app.get("/")
+def health_check():
+    return {"status": "ok", "message": "KPI Agent API is running!"}</code></div>
+
+        <h2>✅ Step 6: Testing the Integration</h2>
+
+        <div class="success-box">
+            <h3>Test Checklist:</h3>
+            <ol style="margin-left: 20px;">
+                <li>Start FastAPI backend: <code>python backend/main.py</code></li>
+                <li>Start frontend server: <code>python -m http.server 8080</code></li>
+                <li>Open browser to <code>http://localhost:8080/frontend/index.html</code></li>
+                <li>Log in with any role</li>
+                <li>Try adding a student (should POST to backend)</li>
+                <li>Check browser DevTools Network tab for API calls</li>
+                <li>Verify data appears in database</li>
+                <li>Check for any CORS errors in console</li>
+            </ol>
+        </div>
+
+        <h2>🛡️ Error Handling</h2>
+
+        <p>Implement comprehensive error handling:</p>
+
+        <div class="code-block"><code>// Global error handler
+window.addEventListener('error', (event) => {
+    console.error('Global error:', event.error);
+    // Log to server for monitoring
+    fetch('/api/logs', {
+        method: 'POST',
+        body: JSON.stringify({
+            message: event.error.message,
+            stack: event.error.stack,
+            timestamp: new Date().toISOString()
+        })
+    });
+});
+
+// Handle fetch errors
+async function safeAPI(promise) {
+    try {
+        return await promise;
+    } catch (error) {
+        if (error instanceof TypeError) {
+            console.error('Network error:', error);
+            // Show offline message
+        } else {
+            console.error('API error:', error);
+        }
+        throw error;
+    }
+}</code></div>
+
+        <h2>📝 Authentication Token Management</h2>
+
+        <p>Implement JWT token refresh mechanism:</p>
+
+        <div class="code-block"><code>// Token refresh helper
+async refreshToken() {
+    try {
+        const response = await fetch(this.API_BASE_URL + '/auth/refresh', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.getAuthToken()}`
+            }
+        });
+        
+        if (response.ok) {
+            const { token } = await response.json();
+            const user = JSON.parse(localStorage.getItem('user'));
+            user.token = token;
+            localStorage.setItem('user', JSON.stringify(user));
+            return token;
+        } else {
+            // Token expired, redirect to login
+            window.location.href = 'index.html';
+        }
+    } catch (error) {
+        console.error('Token refresh failed:', error);
+    }
+}
+
+// Use in fetchAPI
+async fetchAPI(endpoint, options = {}) {
+    let token = this.getAuthToken();
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers
+    };
+    
+    let response = await fetch(`${this.API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers
+    });
+    
+    // If 401 (unauthorized), try to refresh token
+    if (response.status === 401) {
+        token = await this.refreshToken();
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+            response = await fetch(`${this.API_BASE_URL}${endpoint}`, {
+                ...options,
+                headers
+            });
+        }
+    }
+    
+    if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+    }
+    
+    return response.json();
+}</code></div>
+
+        <h2>🔄 Environment Configuration</h2>
+
+        <p>Create <code>config.js</code> for environment-specific settings:</p>
+
+        <div class="code-block"><code>// js/config.js
+const CONFIG = {
+    development: {
+        API_BASE_URL: 'http://localhost:8000/api',
+        DEBUG: true,
+        LOG_LEVEL: 'debug'
+    },
+    production: {
+        API_BASE_URL: 'https://api.yourdomain.com/api',
+        DEBUG: false,
+        LOG_LEVEL: 'error'
+    }
+};
+
+const ENV = process.env.NODE_ENV || 'development';
+export const config = CONFIG[ENV];</code></div>
+
+        <h2>📊 Data Synchronization</h2>
+
+        <p>Implement periodic data sync:</p>
+
+        <div class="code-block"><code>// Auto-sync data every 5 minutes
+startAutoSync() {
+    setInterval(() => {
+        this.loadStudentData();
+        this.loadKPIData();
+    }, 5 * 60 * 1000); // 5 minutes
+}
+
+// Sync on focus
+window.addEventListener('focus', () => {
+    this.loadStudentData();
+    this.loadKPIData();
+});</code></div>
+
+        <h2>📈 Performance Optimization</h2>
+
+        <div class="info-box">
+            <strong>Optimization Tips:</strong>
+            <ul>
+                <li>Implement request debouncing for search/filter</li>
+                <li>Cache API responses locally</li>
+                <li>Implement pagination for large datasets</li>
+                <li>Use lazy loading for images and heavy content</li>
+                <li>Compress API responses with gzip</li>
+                <li>Monitor API response times</li>
+                <li>Implement request timeouts</li>
+            </ul>
+        </div>
+
+        <h2>🚀 Deployment Considerations</h2>
+
+        <ul>
+            <li>Update API_BASE_URL for production domain</li>
+            <li>Enable HTTPS for all API calls</li>
+            <li>Implement request signing for security</li>
+            <li>Add API rate limiting</li>
+            <li>Implement request retry logic</li>
+            <li>Add monitoring and error tracking</li>
+            <li>Implement logging for debugging</li>
+            <li>Add request caching layer</li>
+        </ul>
+
+        <footer>
+            <p>Student KPI Management System • API Integration Guide v1.0</p>
+            <p>Last Updated: February 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

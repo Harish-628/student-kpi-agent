@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Guide - Student KPI Frontend</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        h2 {
+            color: #1f2937;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            font-size: 1.75rem;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            color: #667eea;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #d63384;
+            font-family: 'Courier New', monospace;
+        }
+
+        .code-block {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .code-block code {
+            background: none;
+            padding: 0;
+            color: #f8f8f2;
+        }
+
+        .info-box {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 15px 0;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .step-box {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .step-number {
+            display: inline-block;
+            background-color: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #667eea;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: #e0e7ff;
+            color: #667eea;
+            border: 1px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .toc {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .toc li:before {
+            content: "→";
+            margin-right: 10px;
+            color: #667eea;
+        }
+
+        .toc a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            h2 {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Student KPI System - Frontend Setup Guide</h1>
+        <p class="subtitle">Complete guide to setting up and using the modern Student KPI Management System frontend</p>
+
+        <div class="toc">
+            <h3>📑 Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">System Overview</a></li>
+                <li><a href="#quick-start">Quick Start</a></li>
+                <li><a href="#roles">Role-Based Access</a></li>
+                <li><a href="#features">Key Features</a></li>
+                <li><a href="#integration">Backend Integration</a></li>
+                <li><a href="#customization">Customization Guide</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+            </ul>
+        </div>
+
+        <h2 id="overview">📋 System Overview</h2>
+        <p>The Student KPI Management System is a comprehensive web-based platform designed to track and analyze student performance through Key Performance Indicators (KPIs).</p>
+
+        <h3>Key Characteristics:</h3>
+        <ul class="feature-list">
+            <li>Modern, responsive UI with professional design</li>
+            <li>Role-based authentication (4 distinct roles)</li>
+            <li>Real-time data visualization with charts</li>
+            <li>Mobile-friendly interface</li>
+            <li>Easy integration with FastAPI backend</li>
+            <li>Comprehensive student and KPI management</li>
+        </ul>
+
+        <h2 id="quick-start">🎯 Quick Start Guide</h2>
+
+        <div class="step-box">
+            <h3><span class="step-number">1</span>Open the Login Page</h3>
+            <p>Navigate to <code>frontend/index.html</code> in your browser or run a local server:</p>
+            <div class="code-block"><code>python -m http.server 8080
+# Then visit: http://localhost:8080/frontend/</code></div>
+        </div>
+
+        <div class="step-box">
+            <h3><span class="step-number">2</span>View Demo Credentials</h3>
+            <p>Click the "📋 Demo Credentials" button to see available test accounts.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Role</th>
+                        <th>Email</th>
+                        <th>Password</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Student</td>
+                        <td>student@example.com</td>
+                        <td>password123</td>
+                    </tr>
+                    <tr>
+                        <td>Faculty</td>
+                        <td>faculty@example.com</td>
+                        <td>password123</td>
+                    </tr>
+                    <tr>
+                        <td>Coordinator</td>
+                        <td>coordinator@example.com</td>
+                        <td>password123</td>
+                    </tr>
+                    <tr>
+                        <td>Admin</td>
+                        <td>admin@example.com</td>
+                        <td>admin123</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="step-box">
+            <h3><span class="step-number">3</span>Login & Explore</h3>
+            <p>Select a role, enter credentials, and click "Sign In". You'll be redirected to a role-specific dashboard.</p>
+        </div>
+
+        <h2 id="roles">👥 Role-Based Access Control</h2>
+
+        <h3>🎓 Student Dashboard</h3>
+        <p><strong>Accessible Sections:</strong> Dashboard, KPI Tracking, Analytics, Settings</p>
+        <ul class="feature-list">
+            <li>View personal KPI score and career readiness</li>
+            <li>Track individual KPI metrics</li>
+            <li>View performance trends and analytics</li>
+            <li>Manage profile and password</li>
+        </ul>
+
+        <h3>👨‍🏫 Faculty Dashboard</h3>
+        <p><strong>Accessible Sections:</strong> Dashboard, Students, KPI Tracking, Analytics, Settings</p>
+        <ul class="feature-list">
+            <li>Monitor assigned student performance</li>
+            <li>View student KPI data</li>
+            <li>Generate department reports</li>
+            <li>Manage teaching preferences</li>
+        </ul>
+
+        <h3>📋 Coordinator Dashboard</h3>
+        <p><strong>Accessible Sections:</strong> Dashboard, Students, KPI Tracking, Analytics, Settings</p>
+        <ul class="feature-list">
+            <li>Manage all department students</li>
+            <li>Track department-wide KPI metrics</li>
+            <li>View comprehensive analytics</li>
+            <li>Monitor departmental growth</li>
+        </ul>
+
+        <h3>⚙️ Admin Dashboard</h3>
+        <p><strong>Accessible Sections:</strong> Dashboard, Students, KPI Tracking, Users, Analytics, Settings</p>
+        <ul class="feature-list">
+            <li>Manage all system users</li>
+            <li>Monitor system-wide metrics</li>
+            <li>Access complete analytics</li>
+            <li>System configuration and administration</li>
+        </ul>
+
+        <h2 id="features">✨ Key Features</h2>
+
+        <h3>Dashboard Features</h3>
+        <ul class="feature-list">
+            <li>KPI metric cards with real-time updates</li>
+            <li>Interactive charts and visualizations</li>
+            <li>Recent activity feed</li>
+            <li>Quick access to key functions</li>
+        </ul>
+
+        <h3>Student Management</h3>
+        <ul class="feature-list">
+            <li>Add new students with detailed information</li>
+            <li>Search and filter by department or year</li>
+            <li>View student profiles and KPI scores</li>
+            <li>Edit student information</li>
+        </ul>
+
+        <h3>KPI Tracking</h3>
+        <ul class="feature-list">
+            <li>Track 8 different KPI categories</li>
+            <li>Add and update KPI data for students</li>
+            <li>Bulk import via CSV (backend feature)</li>
+            <li>View KPI records and history</li>
+        </ul>
+
+        <h3>Analytics & Reporting</h3>
+        <ul class="feature-list">
+            <li>Department performance charts</li>
+            <li>Category-wise performance analysis</li>
+            <li>Year-wise student distribution</li>
+            <li>Career readiness assessment</li>
+        </ul>
+
+        <h2 id="integration">🔗 Backend Integration</h2>
+
+        <h3>API Endpoints Access</h3>
+        <p>The frontend is designed to communicate with your FastAPI backend. Update API URLs in <code>js/dashboard.js</code>:</p>
+
+        <div class="code-block"><code>// Example API configuration
+const API_BASE_URL = 'http://localhost:8000/api';
+
+// Example: Add Student
+fetch(`${API_BASE_URL}/student/add`, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+        student_id: 'STU001',
+        name: 'John Doe',
+        department: 'CSE',
+        section: 'A',
+        year: 3
+    })
+})</code></div>
+
+        <h3>Enable CORS in FastAPI</h3>
+        <p>Add CORS middleware to your <code>backend/main.py</code>:</p>
+
+        <div class="code-block"><code>from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)</code></div>
+
+        <div class="info-box">
+            <strong>ℹ️ Note:</strong> Currently, the frontend uses demo data. To connect to your backend, you'll need to:
+            <ul style="margin-top: 10px;">
+                <li>Update fetch URLs in JavaScript files</li>
+                <li>Implement proper authentication tokens</li>
+                <li>Handle API responses and errors</li>
+                <li>Store session tokens securely</li>
+            </ul>
+        </div>
+
+        <h2 id="customization">🎨 Customization Guide</h2>
+
+        <h3>Change Color Scheme</h3>
+        <p>Edit CSS variables in <code>css/styles.css</code>:</p>
+
+        <div class="code-block"><code>:root {
+    --primary-color: #6366f1;      /* Change primary color */
+    --primary-dark: #4f46e5;
+    --secondary-color: #8b5cf6;    /* Change secondary color */
+    --success-color: #10b981;      /* Change success color */
+    /* ... modify other colors ... */
+}</code></div>
+
+        <h3>Add New Navigation Items</h3>
+        <p>In <code>js/dashboard.js</code>, modify the <code>setupNavigation()</code> method:</p>
+
+        <div class="code-block"><code>const menuItems = {
+    newFeature: { 
+        icon: '🆕', 
+        label: 'New Feature', 
+        section: 'new-feature' 
+    },
+    // ... add more items
+};</code></div>
+
+        <h3>Modify KPI Categories</h3>
+        <p>Edit the KPI input form in <code>dashboard.html</code> to add or remove categories.</p>
+
+        <h3>Customize Dashboard Cards</h3>
+        <p>Update KPI card data in <code>js/dashboard.js</code> <code>populateKPICards()</code> method.</p>
+
+        <h2 id="troubleshooting">🔧 Troubleshooting</h2>
+
+        <h3>Login Issues</h3>
+        <div class="step-box">
+            <p><strong>Problem:</strong> Cannot log in</p>
+            <p><strong>Solutions:</strong></p>
+            <ul class="feature-list">
+                <li>Clear browser cache and cookies</li>
+                <li>Check that JavaScript is enabled</li>
+                <li>Verify using correct demo credentials</li>
+                <li>Check browser console (F12) for errors</li>
+                <li>Ensure localStorage is enabled</li>
+            </ul>
+        </div>
+
+        <h3>Charts Not Displaying</h3>
+        <div class="step-box">
+            <p><strong>Problem:</strong> Charts appear blank or missing</p>
+            <p><strong>Solutions:</strong></p>
+            <ul class="feature-list">
+                <li>Verify Chart.js library is loaded</li>
+                <li>Check for JavaScript errors in console</li>
+                <li>Ensure canvas elements exist in HTML</li>
+                <li>Check that chart data is properly formatted</li>
+            </ul>
+        </div>
+
+        <h3>Sidebar Not Responsive</h3>
+        <div class="step-box">
+            <p><strong>Problem:</strong> Sidebar doesn't collapse on mobile</p>
+            <p><strong>Solutions:</strong></p>
+            <ul class="feature-list">
+                <li>Clear CSS cache</li>
+                <li>Check viewport meta tag in HTML</li>
+                <li>Verify media query breakpoints</li>
+                <li>Inspect toggle button click events</li>
+            </ul>
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠️ Important Security Notes:</strong>
+            <ul style="margin-top: 10px;">
+                <li><strong>Development Only:</strong> The current authentication is for demo purposes only</li>
+                <li><strong>Production Deployment:</strong> Implement proper JWT authentication</li>
+                <li><strong>HTTPS Required:</strong> Always use HTTPS in production</li>
+                <li><strong>Secure Storage:</strong> Never store sensitive data in localStorage</li>
+                <li><strong>Input Validation:</strong> Validate all user inputs on backend</li>
+                <li><strong>CORS Configuration:</strong> Restrict origins appropriately for production</li>
+            </ul>
+        </div>
+
+        <h2>📚 File Structure</h2>
+
+        <div class="code-block"><code>frontend/
+├── index.html              # Login page
+├── dashboard.html          # Main dashboard
+├── setup.html              # This setup guide
+├── README.md               # Frontend documentation
+├── css/
+│   ├── styles.css         # Global & component styles
+│   ├── auth.css           # Authentication page styles
+│   └── dashboard.css      # Dashboard layout styles
+└── js/
+    ├── auth.js            # Authentication logic
+    ├── dashboard.js       # Dashboard functionality
+    └── charts.js          # Chart.js configurations</code></div>
+
+        <h2>🚀 Production Deployment</h2>
+
+        <div class="success-box">
+            <h3>Deployment Checklist:</h3>
+            <ul class="feature-list">
+                <li>Replace demo authentication with JWT tokens</li>
+                <li>Update API endpoints to production URLs</li>
+                <li>Enable HTTPS/SSL certificates</li>
+                <li>Configure CORS properly for your domain</li>
+                <li>Minify CSS and JavaScript files</li>
+                <li>Add proper error handling and logging</li>
+                <li>Test thoroughly across browsers and devices</li>
+                <li>Implement rate limiting on API calls</li>
+                <li>Set up proper security headers</li>
+                <li>Enable caching strategies</li>
+            </ul>
+        </div>
+
+        <h2>📞 Additional Resources</h2>
+
+        <ul class="feature-list">
+            <li>Frontend README: <code>frontend/README.md</code></li>
+            <li>Project Documentation: <code>DATABASE_SETUP.md</code></li>
+            <li>Backend API: Check FastAPI auto-generated docs at <code>/docs</code></li>
+            <li>Chart.js Docs: https://www.chartjs.org/</li>
+            <li>MDN Web Docs: https://developer.mozilla.org/</li>
+        </ul>
+
+        <footer>
+            <p>Student KPI Management System • Frontend v1.0.0</p>
+            <p>Last Updated: February 2026 | Status: Production Ready ✅</p>
+        </footer>
+    </div>
+</body>
+</html>

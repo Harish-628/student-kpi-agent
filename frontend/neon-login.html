@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuralKPI — Student AI Performance Agent</title>
+  <meta name="description" content="AI-powered Student KPI Performance Tracking System with real-time analytics">
+  <link rel="stylesheet" href="css/neon-theme.css">
+  <style>
+    /* ---- LOGIN PAGE SPECIFIC STYLES ---- */
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+    }
+
+    /* Animated particle background */
+    .particles-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Floating orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    .orb-1 {
+      width: 500px;
+      height: 500px;
+      background: var(--neon-cyan);
+      top: -200px;
+      right: -100px;
+      animation: float 8s ease-in-out infinite;
+    }
+
+    .orb-2 {
+      width: 400px;
+      height: 400px;
+      background: var(--neon-purple);
+      bottom: -150px;
+      left: -100px;
+      animation: float 10s ease-in-out infinite reverse;
+    }
+
+    .orb-3 {
+      width: 300px;
+      height: 300px;
+      background: var(--neon-pink);
+      top: 50%;
+      left: 40%;
+      animation: float 6s ease-in-out infinite 2s;
+    }
+
+    /* Page Layout */
+    .login-page {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 100vh;
+      width: 100%;
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Left Panel - Login Form */
+    .login-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px 64px;
+      background: rgba(5, 13, 21, 0.9);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(0, 245, 255, 0.15);
+      position: relative;
+    }
+
+    .login-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+
+    .brand-icon {
+      width: 48px;
+      height: 48px;
+      border: 2px solid var(--neon-cyan);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: var(--glow-cyan);
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+
+    .brand-name {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: var(--neon-cyan);
+      text-shadow: var(--glow-cyan);
+    }
+
+    .brand-version {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: rgba(0, 245, 255, 0.5);
+      letter-spacing: 1px;
+    }
+
+    .login-headline {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.2;
+      margin-bottom: 10px;
+      letter-spacing: 1px;
+    }
+
+    .login-headline span {
+      color: var(--neon-cyan);
+      text-shadow: var(--glow-cyan);
+    }
+
+    .login-sub {
+      color: rgba(120, 180, 220, 0.6);
+      font-size: 0.9rem;
+      margin-bottom: 40px;
+    }
+
+    /* Form Styles */
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .password-wrapper {
+      position: relative;
+    }
+
+    .password-wrapper .neon-input {
+      padding-right: 48px;
+    }
+
+    .toggle-pw-btn {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: rgba(0, 245, 255, 0.5);
+      font-size: 1rem;
+      transition: color var(--transition-fast);
+    }
+
+    .toggle-pw-btn:hover {
+      color: var(--neon-cyan);
+    }
+
+    .forgot-link {
+      align-self: flex-end;
+      font-size: 0.78rem;
+      color: rgba(0, 245, 255, 0.5);
+      text-decoration: none;
+      transition: color var(--transition-fast);
+      font-family: var(--font-mono);
+    }
+
+    .forgot-link:hover {
+      color: var(--neon-cyan);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #0077cc, #00f5ff);
+      color: #000;
+      font-family: var(--font-display);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-med);
+      box-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .login-btn:hover {
+      box-shadow: var(--glow-cyan);
+      transform: translateY(-2px);
+    }
+
+    .login-btn:hover::before {
+      left: 100%;
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    .login-btn.loading {
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    /* Demo Cards */
+    .demo-section {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0, 245, 255, 0.1);
+    }
+
+    .demo-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: rgba(0, 245, 255, 0.4);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .demo-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .demo-card {
+      padding: 10px 14px;
+      background: var(--bg-glass);
+      border: 1px solid rgba(0, 245, 255, 0.1);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .demo-card:hover {
+      background: var(--bg-glass-hover);
+      border-color: rgba(0, 245, 255, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .demo-role {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+      font-family: var(--font-mono);
+    }
+
+    .demo-creds {
+      font-size: 0.72rem;
+      color: rgba(120, 180, 220, 0.6);
+    }
+
+    /* Right Panel - Hero */
+    .hero-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px;
+      background: rgba(2, 4, 8, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Animated circuit lines */
+    .circuit-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .circuit-line {
+      position: absolute;
+      background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.6), transparent);
+      height: 1px;
+      width: 60%;
+      animation: dataStream 4s linear infinite;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      background: rgba(0, 245, 255, 0.08);
+      border: 1px solid rgba(0, 245, 255, 0.3);
+      border-radius: 100px;
+      margin-bottom: 32px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--neon-cyan);
+      letter-spacing: 1px;
+    }
+
+    .hero-badge-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--neon-cyan);
+      border-radius: 50%;
+      animation: neonPulse 1.5s ease-in-out infinite;
+      box-shadow: 0 0 8px var(--neon-cyan);
+    }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: 3.2rem;
+      font-weight: 900;
+      text-align: center;
+      line-height: 1.1;
+      margin-bottom: 20px;
+    }
+
+    .hero-title .line1 {
+      color: #ffffff;
+      display: block;
+    }
+
+    .hero-title .line2 {
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: block;
+    }
+
+    .hero-desc {
+      text-align: center;
+      color: rgba(120, 180, 220, 0.6);
+      font-size: 1rem;
+      max-width: 400px;
+      line-height: 1.7;
+      margin-bottom: 40px;
+    }
+
+    /* Feature Grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .feature-item {
+      padding: 20px;
+      background: var(--bg-glass);
+      border-radius: var(--radius-md);
+      border: var(--border-neon);
+      transition: all var(--transition-med);
+    }
+
+    .feature-item:hover {
+      background: var(--bg-glass-hover);
+      box-shadow: 0 0 20px rgba(0, 245, 255, 0.08);
+      transform: translateY(-3px);
+    }
+
+    .feature-icon {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .feature-name {
+      font-family: var(--font-display);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .feature-desc {
+      font-size: 0.75rem;
+      color: rgba(120, 180, 220, 0.5);
+      line-height: 1.4;
+    }
+
+    /* Stats Row */
+    .stats-row {
+      display: flex;
+      gap: 40px;
+      margin-top: 40px;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      font-weight: 900;
+      color: var(--neon-cyan);
+      text-shadow: var(--glow-cyan);
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      color: rgba(120, 180, 220, 0.5);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    /* Error message */
+    .error-msg {
+      padding: 12px 16px;
+      background: rgba(255, 0, 110, 0.1);
+      border: 1px solid rgba(255, 0, 110, 0.4);
+      border-radius: var(--radius-sm);
+      color: var(--neon-pink);
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .error-msg.show {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    /* Responsive */
+    @media (max-width: 960px) {
+      .login-page {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-panel {
+        display: none;
+      }
+
+      .login-panel {
+        padding: 40px 32px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Background layers -->
+  <div class="bg-grid"></div>
+  <div class="bg-scanlines"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="login-page" style="position:relative; z-index:2;">
+    <!-- ===== LEFT: LOGIN PANEL ===== -->
+    <div class="login-panel animate-fade-in">
+      <!-- Brand -->
+      <div class="login-brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-name">NEURALKPI</div>
+          <div class="brand-version">v2.0 // AI AGENT</div>
+        </div>
+      </div>
+
+      <h1 class="login-headline">Access Your<br><span>Intelligence Hub</span></h1>
+      <p class="login-sub">Authenticate to view KPI analytics &amp; AI-powered insights</p>
+
+      <!-- Error message -->
+      <div class="error-msg" id="errorMsg">⚠️ Invalid credentials. Please try again.</div>
+
+      <!-- Login Form -->
+      <form class="login-form" id="loginForm" novalidate>
+        <div class="form-group">
+          <label class="form-label" for="loginEmail">📡 Access Email</label>
+          <input class="neon-input" type="email" id="loginEmail" placeholder="your@college.edu" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">🔐 Secure Key</label>
+          <div class="password-wrapper">
+            <input class="neon-input" type="password" id="loginPassword" placeholder="Enter password" required>
+            <button type="button" class="toggle-pw-btn" id="togglePw">👁</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginRole">🎯 Access Level</label>
+          <select class="neon-select" id="loginRole" required>
+            <option value="">— Select Role —</option>
+            <option value="admin">⚙️ System Admin</option>
+            <option value="faculty">👨‍🏫 Faculty</option>
+            <option value="coordinator">📋 Coordinator</option>
+            <option value="student">🎓 Student</option>
+          </select>
+        </div>
+
+        <a href="#" class="forgot-link">[ FORGOT CREDENTIALS? ]</a>
+
+        <button type="submit" class="login-btn" id="loginBtn">
+          ▶ INITIALIZE SESSION
+        </button>
+      </form>
+
+      <!-- Demo Credentials -->
+      <div class="demo-section">
+        <div class="demo-label">// Quick Demo Access</div>
+        <div class="demo-cards">
+          <div class="demo-card" onclick="fillDemoCredentials('admin@kpi.edu','admin123','admin')">
+            <div class="demo-role text-neon-cyan">Admin</div>
+            <div class="demo-creds">admin@kpi.edu</div>
+          </div>
+          <div class="demo-card" onclick="fillDemoCredentials('faculty@kpi.edu','faculty123','faculty')">
+            <div class="demo-role text-neon-purple">Faculty</div>
+            <div class="demo-creds">faculty@kpi.edu</div>
+          </div>
+          <div class="demo-card" onclick="fillDemoCredentials('coordinator@kpi.edu','coord123','coordinator')">
+            <div class="demo-role text-neon-pink">Coordinator</div>
+            <div class="demo-creds">coordinator@kpi.edu</div>
+          </div>
+          <div class="demo-card" onclick="fillDemoCredentials('cse001@college.edu','student123','student')">
+            <div class="demo-role text-neon-green">Student</div>
+            <div class="demo-creds">cse001@college.edu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RIGHT: HERO PANEL ===== -->
+    <div class="hero-panel">
+      <!-- Circuit animation lines -->
+      <div class="circuit-bg">
+        <div class="circuit-line" style="top:20%; animation-delay:0s;"></div>
+        <div class="circuit-line" style="top:40%; animation-delay:1.5s;"></div>
+        <div class="circuit-line" style="top:60%; animation-delay:0.8s;"></div>
+        <div class="circuit-line" style="top:80%; animation-delay:2.3s;"></div>
+      </div>
+
+      <div class="hero-badge">
+        <div class="hero-badge-dot"></div>
+        AI AGENT ONLINE // PROCESSING
+      </div>
+
+      <h2 class="hero-title">
+        <span class="line1">STUDENT</span>
+        <span class="line2">KPI INTELLIGENCE</span>
+      </h2>
+
+      <p class="hero-desc">
+        AI-powered performance analytics for students, faculty, and coordinators.
+        Track KPIs, predict career readiness, and generate smart insights in real-time.
+      </p>
+
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">🤖</div>
+          <div class="feature-name">AI Insights</div>
+          <div class="feature-desc">GPT-powered performance analysis & recommendations</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📊</div>
+          <div class="feature-name">Live KPIs</div>
+          <div class="feature-desc">Real-time tracking across 8 performance categories</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🏆</div>
+          <div class="feature-name">Leaderboard</div>
+          <div class="feature-desc">Competitive rankings with peer comparison</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-name">Career Score</div>
+          <div class="feature-desc">Dynamic career readiness scoring algorithm</div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-item">
+          <div class="stat-num" id="statStudents">21</div>
+          <div class="stat-label">Students</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statDepts">6</div>
+          <div class="stat-label">Departments</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" id="statKPIs">8</div>
+          <div class="stat-label">KPI Metrics</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="neon-toast" id="toast"></div>
+
+  <script>
+    // ---- Demo credential auto-fill ----
+    function fillDemoCredentials(email, password, role) {
+      document.getElementById('loginEmail').value = email;
+      document.getElementById('loginPassword').value = password;
+      document.getElementById('loginRole').value = role;
+      showToast(`Demo: ${role} credentials loaded`, 'success');
+    }
+
+    // ---- Password toggle ----
+    document.getElementById('togglePw').addEventListener('click', () => {
+      const pw = document.getElementById('loginPassword');
+      pw.type = pw.type === 'password' ? 'text' : 'password';
+    });
+
+    // ---- Login form submission ----
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const role = document.getElementById('loginRole').value;
+      const btn = document.getElementById('loginBtn');
+      const errorMsg = document.getElementById('errorMsg');
+
+      if (!email || !password || !role) {
+        showError('Please fill in all fields');
+        return;
+      }
+
+      btn.textContent = '⟳ AUTHENTICATING...';
+      btn.classList.add('loading');
+      errorMsg.classList.remove('show');
+
+      // Simulate auth (replace with real API call when backend is running)
+      setTimeout(() => {
+        const validCreds = [
+          { email: 'admin@kpi.edu', password: 'admin123', role: 'admin' },
+          { email: 'faculty@kpi.edu', password: 'faculty123', role: 'faculty' },
+          { email: 'coordinator@kpi.edu', password: 'coord123', role: 'coordinator' },
+          // All 21 student logins (password: student123 for all)
+          { email: 'cse001@college.edu', password: 'student123', role: 'student' },
+          { email: 'cse002@college.edu', password: 'student123', role: 'student' },
+          { email: 'cse003@college.edu', password: 'student123', role: 'student' },
+          { email: 'cse004@college.edu', password: 'student123', role: 'student' },
+          { email: 'cse005@college.edu', password: 'student123', role: 'student' },
+          { email: 'ece001@college.edu', password: 'student123', role: 'student' },
+          { email: 'ece002@college.edu', password: 'student123', role: 'student' },
+          { email: 'ece003@college.edu', password: 'student123', role: 'student' },
+          { email: 'ece004@college.edu', password: 'student123', role: 'student' },
+          { email: 'me001@college.edu', password: 'student123', role: 'student' },
+          { email: 'me002@college.edu', password: 'student123', role: 'student' },
+          { email: 'me003@college.edu', password: 'student123', role: 'student' },
+          { email: 'ce001@college.edu', password: 'student123', role: 'student' },
+          { email: 'ce002@college.edu', password: 'student123', role: 'student' },
+          { email: 'it001@college.edu', password: 'student123', role: 'student' },
+          { email: 'it002@college.edu', password: 'student123', role: 'student' },
+          { email: 'it003@college.edu', password: 'student123', role: 'student' },
+          { email: 'ai001@college.edu', password: 'student123', role: 'student' },
+          { email: 'ai002@college.edu', password: 'student123', role: 'student' },
+          { email: 'ai003@college.edu', password: 'student123', role: 'student' },
+          { email: 'ai004@college.edu', password: 'student123', role: 'student' },
+        ];
+
+        const match = validCreds.find(c => c.email === email && c.password === password && c.role === role);
+
+        if (match) {
+          localStorage.setItem('kpi_user', JSON.stringify({ email, role, name: getRoleName(role, email) }));
+          showToast('Authentication successful! Redirecting...', 'success');
+          setTimeout(() => { window.location.href = 'neon-dashboard.html'; }, 1200);
+        } else {
+          btn.textContent = '▶ INITIALIZE SESSION';
+          btn.classList.remove('loading');
+          showError('Invalid credentials or role mismatch');
+        }
+      }, 1400);
+    });
+
+    function getRoleName(role, email = '') {
+      if (role === 'admin') return 'System Administrator';
+      if (role === 'faculty') return 'Dr. Ramesh Kumar';
+      if (role === 'coordinator') return 'Prof. Sunita Sharma';
+      const studentNames = {
+        'cse001@college.edu': 'Arjun Sharma', 'cse002@college.edu': 'Priya Patel',
+        'cse003@college.edu': 'Rahul Verma', 'cse004@college.edu': 'Sneha Iyer',
+        'cse005@college.edu': 'Vikram Nair', 'ece001@college.edu': 'Ananya Krishnan',
+        'ece002@college.edu': 'Karthik Reddy', 'ece003@college.edu': 'Divya Menon',
+        'ece004@college.edu': 'Sai Kumar', 'me001@college.edu': 'Rohit Singh',
+        'me002@college.edu': 'Kavitha Suresh', 'me003@college.edu': 'Arun Raj',
+        'ce001@college.edu': 'Deepa Thomas', 'ce002@college.edu': 'Harish Kumar',
+        'it001@college.edu': 'Meera Nambiar', 'it002@college.edu': 'Ajay Chandran',
+        'it003@college.edu': 'Lakshmi Pillai', 'ai001@college.edu': 'Ravi Teja',
+        'ai002@college.edu': 'Pooja Gupta', 'ai003@college.edu': 'Nikhil Bose',
+        'ai004@college.edu': 'Sreya Nair',
+      };
+      return studentNames[email] || 'Student';
+    }
+
+    function showError(msg) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = '⚠️ ' + msg;
+      el.classList.add('show');
+    }
+
+    // ---- Toast notification ----
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `neon-toast ${type}`;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ---- Animate stats counters ----
+    function animateCounter(el, target, duration = 2000) {
+      let start = 0;
+      const step = Math.ceil(target / (duration / 16));
+      const timer = setInterval(() => {
+        start = Math.min(start + step, target);
+        el.textContent = start;
+        if (start >= target) clearInterval(timer);
+      }, 16);
+    }
+    setTimeout(() => {
+      animateCounter(document.getElementById('statStudents'), 21);
+      animateCounter(document.getElementById('statDepts'), 6, 800);
+      animateCounter(document.getElementById('statKPIs'), 8, 600);
+    }, 500);
+  </script>
+</body>
+
+</html>
