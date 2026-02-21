@@ -93,23 +93,23 @@
     }
 
     .brand-icon {
-      width: 48px;
-      height: 48px;
+      width: 64px;
+      height: 64px;
       border: 2px solid var(--neon-cyan);
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
+      font-size: 2rem;
       box-shadow: var(--glow-cyan);
       animation: glowPulse 3s ease-in-out infinite;
     }
 
     .brand-name {
       font-family: var(--font-display);
-      font-size: 1.4rem;
+      font-size: 2.2rem;
       font-weight: 900;
-      letter-spacing: 3px;
+      letter-spacing: 4px;
       color: var(--neon-cyan);
       text-shadow: var(--glow-cyan);
     }
@@ -460,6 +460,83 @@
       animation: fadeIn 0.3s ease;
     }
 
+    /* Marquee Winners */
+    .winners-marquee {
+      width: 100%;
+      max-width: 600px;
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+      margin-top: 20px;
+      mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+      -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+    }
+
+    .winners-track {
+      display: inline-block;
+      animation: marquee 20s linear infinite;
+    }
+
+    .winners-track:hover {
+      animation-play-state: paused;
+    }
+
+    @keyframes marquee {
+      0% {
+        transform: translateX(0);
+      }
+
+      100% {
+        transform: translateX(-50%);
+      }
+    }
+
+    .winner-card {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      width: 160px;
+      margin-right: 20px;
+      padding: 15px;
+      background: rgba(0, 245, 255, 0.05);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(0, 245, 255, 0.2);
+      vertical-align: top;
+      white-space: normal;
+      text-align: center;
+      transition: all var(--transition-med);
+    }
+
+    .winner-card:hover {
+      background: rgba(0, 245, 255, 0.1);
+      box-shadow: 0 0 15px rgba(0, 245, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .winner-photo {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 12px;
+      border: 2px solid var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0, 245, 255, 0.3);
+    }
+
+    .winner-event {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--neon-cyan);
+      margin-bottom: 4px;
+    }
+
+    .winner-team {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: rgba(120, 180, 220, 0.7);
+    }
+
     /* Responsive */
     @media (max-width: 960px) {
       .login-page {
@@ -488,6 +565,9 @@
   <div class="login-page" style="position:relative; z-index:2;">
     <!-- ===== LEFT: LOGIN PANEL ===== -->
     <div class="login-panel animate-fade-in">
+      <img src="pictures/new-logo1.png" alt="Kongunadu College Logo"
+        style="position: absolute; top: 30px; right: 30px; width: 120px; height: auto; z-index: 10;" />
+
       <!-- Brand -->
       <div class="login-brand">
         <div class="brand-icon">⚡</div>
@@ -529,35 +609,10 @@
           </select>
         </div>
 
-        <a href="#" class="forgot-link">[ FORGOT CREDENTIALS? ]</a>
-
         <button type="submit" class="login-btn" id="loginBtn">
           ▶ INITIALIZE SESSION
         </button>
       </form>
-
-      <!-- Demo Credentials -->
-      <div class="demo-section">
-        <div class="demo-label">// Quick Demo Access</div>
-        <div class="demo-cards">
-          <div class="demo-card" onclick="fillDemoCredentials('admin@kpi.edu','admin123','admin')">
-            <div class="demo-role text-neon-cyan">Admin</div>
-            <div class="demo-creds">admin@kpi.edu</div>
-          </div>
-          <div class="demo-card" onclick="fillDemoCredentials('faculty@kpi.edu','faculty123','faculty')">
-            <div class="demo-role text-neon-purple">Faculty</div>
-            <div class="demo-creds">faculty@kpi.edu</div>
-          </div>
-          <div class="demo-card" onclick="fillDemoCredentials('coordinator@kpi.edu','coord123','coordinator')">
-            <div class="demo-role text-neon-pink">Coordinator</div>
-            <div class="demo-creds">coordinator@kpi.edu</div>
-          </div>
-          <div class="demo-card" onclick="fillDemoCredentials('cse001@college.edu','student123','student')">
-            <div class="demo-role text-neon-green">Student</div>
-            <div class="demo-creds">cse001@college.edu</div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- ===== RIGHT: HERO PANEL ===== -->
@@ -585,26 +640,50 @@
         Track KPIs, predict career readiness, and generate smart insights in real-time.
       </p>
 
-      <div class="features-grid">
-        <div class="feature-item">
-          <div class="feature-icon">🤖</div>
-          <div class="feature-name">AI Insights</div>
-          <div class="feature-desc">GPT-powered performance analysis & recommendations</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">📊</div>
-          <div class="feature-name">Live KPIs</div>
-          <div class="feature-desc">Real-time tracking across 8 performance categories</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">🏆</div>
-          <div class="feature-name">Leaderboard</div>
-          <div class="feature-desc">Competitive rankings with peer comparison</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-icon">⚡</div>
-          <div class="feature-name">Career Score</div>
-          <div class="feature-desc">Dynamic career readiness scoring algorithm</div>
+      <!-- Latest Prize Winners -->
+      <div class="winners-marquee">
+        <div class="winners-track">
+          <div class="winner-card"><img src="pictures/captian.jpg" class="winner-photo" alt="Team Avengers">
+            <div class="winner-event">Hackathon 2026</div>
+            <div class="winner-team">Team Avengers</div>
+          </div>
+          <div class="winner-card"><img src="pictures/iron-man.jpg" class="winner-photo" alt="Stark Industries">
+            <div class="winner-event">AI Challenge</div>
+            <div class="winner-team">Stark Industries</div>
+          </div>
+          <div class="winner-card"><img src="pictures/doc strange.jpg" class="winner-photo" alt="Mystic Coders">
+            <div class="winner-event">Data Science Cup</div>
+            <div class="winner-team">Mystic Coders</div>
+          </div>
+          <div class="winner-card"><img src="pictures/spiderman.jpg" class="winner-photo" alt="Web Slingers">
+            <div class="winner-event">Web Dev Clash</div>
+            <div class="winner-team">Web Slingers</div>
+          </div>
+          <div class="winner-card"><img src="pictures/thor.jpg" class="winner-photo" alt="Thunder Nodes">
+            <div class="winner-event">Cloud Summit</div>
+            <div class="winner-team">Thunder Nodes</div>
+          </div>
+          <!-- Duplicate for seamless loop -->
+          <div class="winner-card"><img src="pictures/captian.jpg" class="winner-photo" alt="Team Avengers">
+            <div class="winner-event">Hackathon 2026</div>
+            <div class="winner-team">Team Avengers</div>
+          </div>
+          <div class="winner-card"><img src="pictures/iron-man.jpg" class="winner-photo" alt="Stark Industries">
+            <div class="winner-event">AI Challenge</div>
+            <div class="winner-team">Stark Industries</div>
+          </div>
+          <div class="winner-card"><img src="pictures/doc strange.jpg" class="winner-photo" alt="Mystic Coders">
+            <div class="winner-event">Data Science Cup</div>
+            <div class="winner-team">Mystic Coders</div>
+          </div>
+          <div class="winner-card"><img src="pictures/spiderman.jpg" class="winner-photo" alt="Web Slingers">
+            <div class="winner-event">Web Dev Clash</div>
+            <div class="winner-team">Web Slingers</div>
+          </div>
+          <div class="winner-card"><img src="pictures/thor.jpg" class="winner-photo" alt="Thunder Nodes">
+            <div class="winner-event">Cloud Summit</div>
+            <div class="winner-team">Thunder Nodes</div>
+          </div>
         </div>
       </div>
 
