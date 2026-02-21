@@ -1001,6 +1001,8 @@
         <!-- Top Bar -->
         <header class="topbar">
             <div class="topbar-left">
+                <button class="toggle-sidebar-btn" onclick="history.back()" title="Go Back"
+                    style="margin-right: 8px;">⬅</button>
                 <button class="toggle-sidebar-btn" id="toggleSidebar">☰</button>
                 <span class="page-title" id="pageTitle">DASHBOARD</span>
             </div>
@@ -1018,60 +1020,145 @@
 
             <!-- ── DASHBOARD SECTION ── -->
             <section class="section active" id="section-dashboard">
-                <div class="stat-cards">
-                    <div class="stat-card cyan">
-                        <div class="stat-card-icon">🎓</div>
-                        <div class="stat-card-val" id="cardStudents">21</div>
-                        <div class="stat-card-label">Total Students</div>
-                        <div class="stat-card-trend">▲ 3 this semester</div>
+                <!-- Admin Dashboard View -->
+                <div id="adminDashboardView">
+                    <div class="stat-cards">
+                        <div class="stat-card cyan">
+                            <div class="stat-card-icon">🎓</div>
+                            <div class="stat-card-val" id="cardStudents">21</div>
+                            <div class="stat-card-label">Total Students</div>
+                            <div class="stat-card-trend">▲ 3 this semester</div>
+                        </div>
+                        <div class="stat-card purple">
+                            <div class="stat-card-icon">⭐</div>
+                            <div class="stat-card-val" id="cardAvgKPI">—</div>
+                            <div class="stat-card-label">Avg KPI Score</div>
+                            <div class="stat-card-trend">▲ +4.2 vs last month</div>
+                        </div>
+                        <div class="stat-card green">
+                            <div class="stat-card-icon">✅</div>
+                            <div class="stat-card-val" id="cardHighReady">—</div>
+                            <div class="stat-card-label">High Readiness</div>
+                            <div class="stat-card-trend">▲ 2 new this week</div>
+                        </div>
+                        <div class="stat-card pink">
+                            <div class="stat-card-icon">🏢</div>
+                            <div class="stat-card-val">6</div>
+                            <div class="stat-card-label">Departments</div>
+                            <div class="stat-card-trend">● All active</div>
+                        </div>
                     </div>
-                    <div class="stat-card purple">
-                        <div class="stat-card-icon">⭐</div>
-                        <div class="stat-card-val" id="cardAvgKPI">—</div>
-                        <div class="stat-card-label">Avg KPI Score</div>
-                        <div class="stat-card-trend">▲ +4.2 vs last month</div>
+
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">KPI Score Distribution</span>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chartRadar"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">Career Readiness</span>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chartDoughnut"></canvas></div>
+                        </div>
                     </div>
-                    <div class="stat-card green">
-                        <div class="stat-card-icon">✅</div>
-                        <div class="stat-card-val" id="cardHighReady">—</div>
-                        <div class="stat-card-label">High Readiness</div>
-                        <div class="stat-card-trend">▲ 2 new this week</div>
-                    </div>
-                    <div class="stat-card pink">
-                        <div class="stat-card-icon">🏢</div>
-                        <div class="stat-card-val">6</div>
-                        <div class="stat-card-label">Departments</div>
-                        <div class="stat-card-trend">● All active</div>
+
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">Department Performance</span>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chartBar"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">KPI Trend (Monthly)</span>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chartLine"></canvas></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="charts-row">
-                    <div class="chart-card">
+                <!-- Student Personal Dashboard View -->
+                <div id="studentDashboardView" style="display: none;">
+                    <div class="chart-card" style="margin-bottom: 24px;">
                         <div class="chart-card-header">
-                            <span class="chart-card-title">KPI Score Distribution</span>
+                            <span class="chart-card-title">My Profile</span>
                         </div>
-                        <div class="chart-wrapper"><canvas id="chartRadar"></canvas></div>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">Career Readiness</span>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+                            <div class="stat-card cyan">
+                                <div class="stat-card-label">Name</div>
+                                <div class="stat-card-val" id="studentProfileName" style="font-size: 1.2rem;">—</div>
+                                <div class="stat-card-trend" id="studentProfileId"
+                                    style="color: rgba(120, 180, 220, .6);">—</div>
+                            </div>
+                            <div class="stat-card purple">
+                                <div class="stat-card-label">Department</div>
+                                <div class="stat-card-val" id="studentProfileDept"
+                                    style="font-size: 1rem; line-height: 1.2;">—</div>
+                            </div>
+                            <div class="stat-card pink">
+                                <div class="stat-card-label">Year & Section</div>
+                                <div class="stat-card-val" style="font-size: 1.2rem;"><span
+                                        id="studentProfileYear">—</span> <span
+                                        style="font-size: 0.8rem; color: rgba(120,180,220,0.6);">Sec</span> <span
+                                        id="studentProfileSection">—</span></div>
+                            </div>
+                            <div class="stat-card green">
+                                <div class="stat-card-label">KPI Score & Readiness</div>
+                                <div class="stat-card-val" id="studentProfileScore" style="font-size: 1.5rem;">—</div>
+                                <div id="studentProfileReadiness" style="margin-top: 5px;">—</div>
+                            </div>
                         </div>
-                        <div class="chart-wrapper"><canvas id="chartDoughnut"></canvas></div>
                     </div>
-                </div>
 
-                <div class="charts-row">
-                    <div class="chart-card">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">Department Performance</span>
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">My KPI Breakdown</span>
+                            </div>
+                            <div class="chart-wrapper"
+                                style="position: relative; height: 380px; width: 100%; display: flex; justify-content: center; align-items: center;">
+                                <canvas id="studentRadarChart"></canvas>
+                            </div>
                         </div>
-                        <div class="chart-wrapper"><canvas id="chartBar"></canvas></div>
-                    </div>
-                    <div class="chart-card">
-                        <div class="chart-card-header">
-                            <span class="chart-card-title">KPI Trend (Monthly)</span>
+
+                        <!-- AI Career Coach Recommendations -->
+                        <div class="chart-card" style="display: flex; flex-direction: column;">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">🤖 AI Career Coach Recommendations</span>
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
+                                <div class="stat-card"
+                                    style="background: rgba(0, 245, 255, 0.05); border-left: 4px solid var(--neon-cyan); --c1: #0080ff; --c2: #00f5ff; padding: 16px;">
+                                    <div style="font-size: 1.2rem; margin-bottom: 8px;">🎯 Target Goal</div>
+                                    <div id="aiTargetGoal" style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">
+                                        Analyzing your KPIs...</div>
+                                </div>
+                                <div class="stat-card"
+                                    style="background: rgba(191, 0, 255, 0.05); border-left: 4px solid var(--neon-purple); --c1: #6600cc; --c2: #bf00ff; padding: 16px;">
+                                    <div style="font-size: 1.2rem; margin-bottom: 8px;">📊 Peer Comparison</div>
+                                    <div id="aiPeerComparison"
+                                        style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">Comparing with your
+                                        department...</div>
+                                </div>
+                                <div class="stat-card"
+                                    style="background: rgba(57, 255, 20, 0.05); border-left: 4px solid var(--neon-green); --c1: #1a8800; --c2: #39ff14; padding: 16px;">
+                                    <div style="font-size: 1.2rem; margin-bottom: 8px;">🔥 Trending Skills</div>
+                                    <div id="aiTrendingSkill"
+                                        style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">
+                                        Analyzing department trends...</div>
+                                </div>
+                                <div class="stat-card"
+                                    style="background: rgba(255, 0, 110, 0.05); border-left: 4px solid var(--neon-pink); --c1: #cc0055; --c2: #ff006e; padding: 16px;">
+                                    <div style="font-size: 1.2rem; margin-bottom: 8px;">🚀 Action Plan</div>
+                                    <div id="aiActionPlan" style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">
+                                        Formulating your
+                                        next steps...</div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="chart-wrapper"><canvas id="chartLine"></canvas></div>
                     </div>
                 </div>
             </section>
@@ -1084,7 +1171,8 @@
                             <div class="section-heading">Students Database</div>
                             <div class="section-sub">All enrolled students with KPI performance data</div>
                         </div>
-                        <button class="btn btn-solid-cyan btn-sm" onclick="openAddStudent()">+ Add Student</button>
+                        <button class="btn btn-solid-cyan btn-sm" id="addStudentBtn" onclick="openAddStudent()">+ Add
+                            Student</button>
                     </div>
                     <div class="filter-row">
                         <input type="text" placeholder="🔍 Search by name or ID..." id="studentSearch"
@@ -1128,14 +1216,18 @@
 
             <!-- ── KPI TRACKER SECTION ── -->
             <section class="section" id="section-kpi">
-                <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div style="display:flex;align-items:center;justify-content:space-between; margin-bottom: 24px;">
                     <div>
                         <div class="section-heading">KPI Tracker</div>
-                        <div class="section-sub">Select a student to view detailed KPI breakdown</div>
+                        <div class="section-sub" id="kpiTrackerSubtitle">Select a student to view detailed KPI breakdown
+                        </div>
                     </div>
-                    <select class="neon-select" style="width:260px;" id="kpiStudentSelect" onchange="loadStudentKPI()">
-                        <option value="">— Select Student —</option>
-                    </select>
+                    <div id="kpiSearchContainer">
+                        <select class="neon-select" style="width:260px;" id="kpiStudentSelect"
+                            onchange="loadStudentKPI()">
+                            <option value="">— Select Student —</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="kpi-grid-section" id="kpiMetricsGrid">
@@ -1152,6 +1244,8 @@
                         <div class="chart-wrapper"><canvas id="chartKPIBar"></canvas></div>
                     </div>
                 </div>
+
+
             </section>
 
             <!-- ── LEADERBOARD SECTION ── -->
@@ -1282,8 +1376,37 @@
         </div>
     </div>
 
-    <!-- Toast -->
-    <div class="neon-toast" id="toast"></div>
+    <!-- ── TOAST & MODALS ── -->
+    <div id="toast" class="neon-toast"></div>
+
+    <div class="neon-modal-overlay" id="uploadModalOverlay">
+        <div class="neon-modal">
+            <div class="neon-modal-header">
+                <h2 class="neon-modal-title">Upload Certificate</h2>
+                <button class="modal-close-btn" onclick="closeUploadModal()">✖</button>
+            </div>
+            <div style="font-size: 0.9rem; color: rgba(120, 180, 220, 0.8); margin-bottom: 16px;">
+                Uploading evidence for: <strong id="uploadCategoryLabel"
+                    style="color: var(--neon-cyan);">Category</strong>
+            </div>
+            <form id="certificateUploadForm" style="display: flex; flex-direction: column; gap: 16px;">
+                <input type="hidden" id="uploadCategoryKey" value="">
+                <div>
+                    <label
+                        style="color: rgba(120, 180, 220, 0.8); font-size: 0.9rem; margin-bottom: 8px; display: block;">Certificate
+                        File (Image/PDF)</label>
+                    <input type="file" id="certificateFile" class="neon-input" style="width: 100%; padding: 10px;"
+                        accept="image/*,.pdf" required>
+                </div>
+                <button type="submit" class="btn btn-solid-cyan" id="uploadCertBtn" style="margin-top: 8px;">Upload
+                    Document</button>
+            </form>
+            <div id="uploadSuccessMsg"
+                style="display: none; margin-top: 16px; color: var(--neon-green); font-size: 0.95rem; align-items: center; gap: 8px;">
+                ✅ Document verified! KPI Score updated.
+            </div>
+        </div>
+    </div>
 
     <script src="js/neon-app.js"></script>
 </body>

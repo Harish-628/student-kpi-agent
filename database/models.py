@@ -123,6 +123,7 @@ class KPI(Base):
     industrial_visits = Column(Integer, default=0, nullable=False)
     research_papers = Column(Integer, default=0, nullable=False)
     patents = Column(Integer, default=0, nullable=False)
+    value_added_courses = Column(Integer, default=0, nullable=False)
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationship
@@ -130,6 +131,32 @@ class KPI(Base):
     
     def __repr__(self):
         return f"<KPI(student_id='{self.student_id}', internships={self.internships}, certifications={self.certifications})>"
+
+
+class CertificateUpload(Base):
+    """
+    CertificateUpload model for tracking uploaded files supporting KPI metrics.
+    
+    Attributes:
+        id (int): Unique identifier
+        student_id (str): Foreign Key to Student
+        category (str): The KPI category this supports (e.g., 'certifications', 'value_added_courses')
+        file_path (str): The server path or URI of the uploaded file
+        upload_date (datetime): When the file was uploaded
+    """
+    
+    __tablename__ = "certificate_uploads"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.student_id"), nullable=False)
+    category = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    upload_date = Column(DateTime, default=datetime.utcnow)
+    
+    student = relationship("Student")
+    
+    def __repr__(self):
+        return f"<CertificateUpload(id={self.id}, student_id='{self.student_id}', category='{self.category}')>"
 
 
 class Score(Base):

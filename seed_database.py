@@ -63,6 +63,7 @@ def generate_kpi(tier="medium"):
             "projects": random.randint(5, 10),
             "club_activities": random.randint(4, 8),
             "industrial_visits": random.randint(5, 10),
+            "value_added_courses": random.randint(3, 6),
         }
     elif tier == "medium":
         return {
@@ -74,6 +75,7 @@ def generate_kpi(tier="medium"):
             "projects": random.randint(2, 6),
             "club_activities": random.randint(2, 5),
             "industrial_visits": random.randint(2, 6),
+            "value_added_courses": random.randint(1, 3),
         }
     else:  # low
         return {
@@ -85,6 +87,7 @@ def generate_kpi(tier="medium"):
             "projects": random.randint(1, 3),
             "club_activities": random.randint(0, 2),
             "industrial_visits": random.randint(1, 3),
+            "value_added_courses": 0,
         }
 
 def calculate_kpi_score(kpi_data):
@@ -97,11 +100,12 @@ def calculate_kpi_score(kpi_data):
         "projects": 8,
         "club_activities": 4,
         "industrial_visits": 3,
+        "value_added_courses": 4,
     }
     max_vals = {
         "internships": 5, "certifications": 12, "hackathons": 8,
         "publications": 4, "workshops": 15, "projects": 10,
-        "club_activities": 8, "industrial_visits": 10,
+        "club_activities": 8, "industrial_visits": 10, "value_added_courses": 6,
     }
     score = 0
     for key, weight in weights.items():
