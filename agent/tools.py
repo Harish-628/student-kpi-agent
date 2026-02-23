@@ -1,0 +1,154 @@
+from langchain_core.tools import tool
+from typing import Optional, List
+from database.database import SessionLocal
+from database.models import Student, Score, KPI, CertificateUpload, User
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+@tool
+def get_top_students(department: Optional[str] = None) -> str:
+    """
+    Get the top 5 students with the highest KPI scores from the database.
+    Optionally filter by department.
+    """
+    db = SessionLocal()
+    try:
+        query = db.query(Student, Score).join(Score, Student.student_id == Score.student_id)
+        
+        if department and department.strip():
+            query = query.filter(Student.department.ilike(f"%{department}%"))
+            
+        results = query.order_by(Score.kpi_score.desc()).limit(5).all()
+        
+        if not results:
+            return f"No students found in the database for department: {department or 'All'}."
+            
+        response_lines = [f"🏆 Top Students ({department or 'All Departments'}):"]
+        for idx, (student, score) in enumerate(results, 1):
+            response_lines.append(
+                f"{idx}. {student.name} ({student.student_id}) - {student.department} | "
+                f"Score: {score.kpi_score:.1f}/100 | Readiness: {score.career_readiness_score}"
+            )
+            
+        return "\n".join(response_lines)
+    except Exception as e:
+        return f"Error retrieving students from database: {str(e)}"
+    finally:
+        db.close()
+
+
+
+@tool
+def upload_certificate_kpi(student_email: str, category: str, file_name: str) -> str:
+    """
+    Simulates a user uploading a certificate document for a specific KPI category.
+    This tool increments their integer KPI value and creates a database record under CertificateUpload.
+    Valid categories: internships, certifications, hackathons, publications, workshops, projects, club_activities, industrial_visits, research_papers, patents, value_added_courses.
+    """
+    valid_categories = [
+        "internships", "certifications", "hackathons", "publications", 
+        "workshops", "projects", "club_activities", "industrial_visits", 
+        "research_papers", "patents", "value_added_courses"
+    ]
+    
+    cat = category.lower().replace(" ", "_")
+    if cat not in valid_categories:
+        return f"Error: Category '{cat}' is not a valid KPI field. Must be one of: {', '.join(valid_categories)}"
+        
+    db = SessionLocal()
+    try:
+        # 1. Find the student ID from email
+        student = db.query(Student).filter(Student.email == student_email).first()
+        if not student:
+            return f"Error: Cannot upload certificate. No student found with email {student_email}."
+            
+        student_id = student.student_id
+        
+        # 2. Add Certificate Upload Record
+        cert = CertificateUpload(
+            student_id=student_id,
+            category=cat,
+            file_path=f"/uploads/simulated/{file_name}"
+        )
+        db.add(cert)
+        
+        # 3. Read & Increment the KPI Table
+        kpi = db.query(KPI).filter(KPI.student_id == student_id).first()
+        if not kpi:
+            return f"Error: No KPI record initialized for student {student_id}."
+            
+        current_val = getattr(kpi, cat)
+        setattr(kpi, cat, current_val + 1)
+        
+        import backend.kpi_engine as kpi_engine
+        
+        # Build KPI Data Dict
+        kpi_data = {
+            "internships": kpi.internships,
+            "certifications": kpi.certifications,
+            "hackathons": kpi.hackathons, 
+            "publications": kpi.publications,
+            "workshops": kpi.workshops,
+            "projects": kpi.projects,
+            "club_activities": kpi.club_activities,
+            "industrial_visits": kpi.industrial_visits,
+            "research_papers": kpi.research_papers,
+            "patents": kpi.patents,
+            "value_added_courses": kpi.value_added_courses
+        }
+        
+        # 4. Re-calculate KPI Score
+        new_score = kpi_engine.calculate_kpi_score(kpi_data)
+        new_readiness = kpi_engine.predict_career_readiness(new_score)
+        
+        # 5. Update Score Record
+        score_record = db.query(Score).filter(Score.student_id == student_id).first()
+        if score_record:
+            score_record.kpi_score = new_score
+            score_record.career_readiness_score = new_readiness
+            
+        db.commit()
+        new_val = getattr(kpi, cat)
+        
+        return f"✅ Auto-Upload Successful! 1 {cat} certificate ('{file_name}') has been added to {student.name}'s profile. Their total {cat} count is now {new_val} and their overall KPI Score has been recalculated automatically."
+    except Exception as e:
+        db.rollback()
+        return f"Database Error during transaction: {str(e)}"
+    finally:
+        db.close()
+
+
+
+@tool
+def add_mock_faculty(email: str, name: str, department: str) -> str:
+    """
+    Provisions a new User account with the 'faculty' role. 
+    Only the Admin can run this function. Use it when the user asks to add or create a new faculty/teacher.
+    """
+    db = SessionLocal()
+    try:
+        # Check if exists
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            return f"Error: A user with the email {email} already exists."
+            
+        new_faculty = User(
+            email=email,
+            name=name,
+            role="faculty",
+            department=department,
+            password_hash=get_password_hash("faculty123")  # default demo password
+        )
+        db.add(new_faculty)
+        db.commit()
+        return f"🎉 Faculty member successfully added to the system! {name} can now login using {email} and the default password 'faculty123'."
+    except Exception as e:
+        db.rollback()
+        return f"Database Error provisioning user: {str(e)}"
+    finally:
+        db.close()
+

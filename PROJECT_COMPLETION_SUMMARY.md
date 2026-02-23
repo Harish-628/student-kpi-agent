@@ -109,7 +109,7 @@ A **complete, enterprise-ready Student KPI Management System** has been successf
 - 4 role-based dashboards:
   1. **Student Dashboard**: Personal KPI, peer comparison, milestones, trends
   2. **Faculty Dashboard**: Class management, KPI addition, score calculation
-  3. **Coordinator Dashboard**: Department overview, bulk uploads, analytics
+  3. **HOD Dashboard**: Department overview, bulk uploads, analytics
   4. **Admin Dashboard**: System-wide analytics, user management, reports
 
 **Responsive:**
@@ -164,7 +164,7 @@ python -m http.server 8080
 | Role | Email | Password |
 |------|-------|----------|
 | Admin | admin@example.com | admin123 |
-| Coordinator | coordinator@example.com | coordinator123 |
+| HOD | hod@example.com | hod123 |
 | Faculty | faculty@example.com | faculty123 |
 | Student | student@example.com | student123 |
 
@@ -211,7 +211,7 @@ The system tracks 10 key performance indicators per student:
 - Class-level analytics
 - Performance distribution charts
 
-### Coordinator Dashboard
+### HOD Dashboard
 - Department-wide statistics
 - Student performance overview
 - Data quality monitoring
@@ -259,7 +259,7 @@ The system tracks 10 key performance indicators per student:
 
 ### Authorization
 - ✅ Role-based access control (RBAC)
-- ✅ 4 role levels: Student, Faculty, Coordinator, Admin
+- ✅ 4 role levels: Student, Faculty, HOD, Admin
 - ✅ Endpoint-level permission checking
 
 ### Data Protection
@@ -387,7 +387,7 @@ student-kpi-project/
 ### 2. Role-Based Access Control
 - Student: View own data, peer comparison
 - Faculty: Manage students, add KPI
-- Coordinator: Bulk uploads, reporting
+- HOD: Bulk uploads, reporting
 - Admin: Full system access
 
 ### 3. Student Management
@@ -471,7 +471,7 @@ User Sees Data
 5. Insights for improvement
 
 ### Use Case 2: Bulk Data Import
-1. Coordinator prepares CSV
+1. HOD prepares CSV
 2. Uploads via API endpoint
 3. System validates data
 4. Inserts into database
@@ -639,7 +639,7 @@ Planned features for v2.0:
 
 ## 👥 Roles & Permissions Matrix
 
-| Feature | Student | Faculty | Coordinator | Admin |
+| Feature | Student | Faculty | HOD | Admin |
 |---------|---------|---------|-------------|-------|
 | View own profile | ✅ | ✅ | ✅ | ✅ |
 | View peer comparison | ✅ | ✅ | ✅ | ✅ |

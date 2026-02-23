@@ -12,14 +12,14 @@ from database.database import Base
 class User(Base):
     """
     User model for authentication and role-based access.
-    Supports multiple roles: student, faculty, coordinator, admin.
+    Supports multiple roles: student, faculty, hod, admin.
     
     Attributes:
         id (int): Unique identifier
         email (str): User email (unique)
         password_hash (str): Hashed password
         name (str): Full name
-        role (str): User role (student, faculty, coordinator, admin)
+        role (str): User role (student, faculty, hod, admin)
         department (str): Department affiliation
         is_active (bool): Account active status
         created_at (datetime): Account creation timestamp
@@ -32,7 +32,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
-    role = Column(String, default="student", nullable=False)  # student, faculty, coordinator, admin
+    role = Column(String, default="student", nullable=False)  # student, faculty, hod, admin
     department = Column(String, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

@@ -86,7 +86,7 @@ Last Updated: January 2024
 - [x] 4 Role-Based Dashboards
   - [x] Student Dashboard (view performance)
   - [x] Faculty Dashboard (manage KPI)
-  - [x] Coordinator Dashboard (bulk operations)
+  - [x] HOD Dashboard (bulk operations)
   - [x] Admin Dashboard (system management)
 
 ### Authentication & Security
@@ -204,15 +204,15 @@ curl http://localhost:8000/api/students \
 5. ✅ Click Login
 6. ✅ Should see Student Dashboard
 
-### Scenario 2: Add Student (As Coordinator)
-1. ✅ Login as coordinator@example.com / coordinator123
+### Scenario 2: Add Student (As HOD)
+1. ✅ Login as hod@example.com / hod123
 2. ✅ Click "Add Student" button
 3. ✅ Fill student form
 4. ✅ Submit
 5. ✅ Student appears in list
 
 ### Scenario 3: Upload KPI Data
-1. ✅ Login as coordinator@example.com
+1. ✅ Login as hod@example.com
 2. ✅ Prepare test.csv with student data
 3. ✅ Click "Upload KPI CSV"
 4. ✅ Select file
@@ -309,7 +309,7 @@ curl http://localhost:8000/api/students \
 - [x] Student management table
 - [x] Bulk upload option
 
-### Coordinator Dashboard
+### HOD Dashboard
 - [x] All faculty features
 - [x] CSV upload functionality
 - [x] Department statistics
@@ -318,7 +318,7 @@ curl http://localhost:8000/api/students \
 - [x] System-wide analytics
 
 ### Admin Dashboard
-- [x] All coordinator features
+- [x] All hod features
 - [x] User management
 - [x] System configuration
 - [x] Full data access

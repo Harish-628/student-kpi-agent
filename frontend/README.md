@@ -59,7 +59,7 @@ A professional, modern, and feature-rich frontend for managing student KPI (Key 
 - **Analytics**: Department and student performance analytics
 - **Settings**: Profile management
 
-### 3. **Department Coordinator** 📋
+### 3. **Department HOD** 📋
 - **Dashboard**: Department statistics, growth metrics
 - **Student Management**: Manage all department students
 - **KPI Tracking**: Department-wide KPI tracking
@@ -104,7 +104,7 @@ After login, you'll be redirected to the role-specific dashboard.
 |------|-------|----------|
 | Student | student@example.com | password123 |
 | Faculty | faculty@example.com | password123 |
-| Coordinator | coordinator@example.com | password123 |
+| HOD | hod@example.com | password123 |
 | Admin | admin@example.com | admin123 |
 
 ## 📁 File Structure

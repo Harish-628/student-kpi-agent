@@ -67,7 +67,7 @@ echo.
 REM Check if requirements are installed
 pip show fastapi >nul 2>&1
 if errorlevel 1 (
-    echo Installing dependencies (this may take a few minutes)...
+    echo Installing dependencies ^(this may take a few minutes^)...
     pip install -r requirements.txt
     if errorlevel 1 (
         echo ERROR: Failed to install dependencies

@@ -1,0 +1,3 @@
+﻿student_id,name,email,department,section,year,gpa
+TEST001,Test User,test@college.edu,Computer Science & Engineering,A,1,3.5
+TEST002,Test User 2,test2@college.edu,Civil Engineering,B,2,3.8

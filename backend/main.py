@@ -81,6 +81,6 @@ def get_api_info():
             "header": "Authorization: Bearer {token}",
             "expiry": "30 minutes"
         },
-        "roles": ["student", "faculty", "coordinator", "admin"],
+        "roles": ["student", "faculty", "hod", "admin"],
         "base_url": "http://localhost:8000"
     }

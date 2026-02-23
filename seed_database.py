@@ -13,6 +13,7 @@ from database.models import Student, KPI, Score, User
 from datetime import datetime, timedelta
 import random
 import hashlib
+from backend.kpi_engine import calculate_kpi_score, predict_career_readiness
 
 def hash_pw(pw):
     return hashlib.sha256(pw.encode()).hexdigest()
@@ -90,38 +91,7 @@ def generate_kpi(tier="medium"):
             "value_added_courses": 0,
         }
 
-def calculate_kpi_score(kpi_data):
-    weights = {
-        "internships": 10,
-        "certifications": 5,
-        "hackathons": 7,
-        "publications": 12,
-        "workshops": 3,
-        "projects": 8,
-        "club_activities": 4,
-        "industrial_visits": 3,
-        "value_added_courses": 4,
-    }
-    max_vals = {
-        "internships": 5, "certifications": 12, "hackathons": 8,
-        "publications": 4, "workshops": 15, "projects": 10,
-        "club_activities": 8, "industrial_visits": 10, "value_added_courses": 6,
-    }
-    score = 0
-    for key, weight in weights.items():
-        val = min(kpi_data[key], max_vals[key])
-        score += (val / max_vals[key]) * weight
-    return round(min(score, 100), 2)
 
-def get_career_readiness(score):
-    if score >= 80:
-        return "High Readiness"
-    elif score >= 60:
-        return "Moderate Readiness"
-    elif score >= 40:
-        return "Developing"
-    else:
-        return "Low Readiness"
 
 # Assign tiers
 TIERS = [
@@ -155,27 +125,101 @@ def seed():
                 is_active=True,
                 created_at=datetime.utcnow()
             )
-            faculty = User(
-                email="faculty@kpi.edu",
-                password_hash=hash_pw("faculty123"),
-                name="Dr. Ramesh Kumar",
-                role="faculty",
+            # CSE Faculty
+            fac1 = User(email="fac01@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Ramesh Kumar", role="faculty", department="Computer Science & Engineering", is_active=True, created_at=datetime.utcnow())
+            fac2 = User(email="fac02@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Anjali Desai", role="faculty", department="Computer Science & Engineering", is_active=True, created_at=datetime.utcnow())
+            fac3 = User(email="fac03@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Vivek Sharma", role="faculty", department="Computer Science & Engineering", is_active=True, created_at=datetime.utcnow())
+            fac4 = User(email="fac04@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Neha Singh", role="faculty", department="Computer Science & Engineering", is_active=True, created_at=datetime.utcnow())
+            fac5 = User(email="fac05@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Arjun Patel", role="faculty", department="Computer Science & Engineering", is_active=True, created_at=datetime.utcnow())
+            # ECE Faculty
+            fac6 = User(email="fac06@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Vikram Seth", role="faculty", department="Electronics & Communication", is_active=True, created_at=datetime.utcnow())
+            fac7 = User(email="fac07@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Neha Gupta", role="faculty", department="Electronics & Communication", is_active=True, created_at=datetime.utcnow())
+            fac8 = User(email="fac08@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Rohan Mehra", role="faculty", department="Electronics & Communication", is_active=True, created_at=datetime.utcnow())
+            fac9 = User(email="fac09@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Anil Kapoor", role="faculty", department="Electronics & Communication", is_active=True, created_at=datetime.utcnow())
+            fac10 = User(email="fac10@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Priya Reddy", role="faculty", department="Electronics & Communication", is_active=True, created_at=datetime.utcnow())
+            # MECH Faculty
+            fac11 = User(email="fac11@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Rajesh Pillai", role="faculty", department="Mechanical Engineering", is_active=True, created_at=datetime.utcnow())
+            fac12 = User(email="fac12@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Sanjay Dutt", role="faculty", department="Mechanical Engineering", is_active=True, created_at=datetime.utcnow())
+            fac13 = User(email="fac13@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Kiran Rao", role="faculty", department="Mechanical Engineering", is_active=True, created_at=datetime.utcnow())
+            fac14 = User(email="fac14@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Amit Shah", role="faculty", department="Mechanical Engineering", is_active=True, created_at=datetime.utcnow())
+            fac15 = User(email="fac15@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Sneha Verma", role="faculty", department="Mechanical Engineering", is_active=True, created_at=datetime.utcnow())
+            # CE Faculty
+            fac16 = User(email="fac16@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Suresh Reddy", role="faculty", department="Civil Engineering", is_active=True, created_at=datetime.utcnow())
+            fac17 = User(email="fac17@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Manoj Tiwari", role="faculty", department="Civil Engineering", is_active=True, created_at=datetime.utcnow())
+            fac18 = User(email="fac18@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Deepa Nair", role="faculty", department="Civil Engineering", is_active=True, created_at=datetime.utcnow())
+            fac19 = User(email="fac19@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Rahul Bose", role="faculty", department="Civil Engineering", is_active=True, created_at=datetime.utcnow())
+            fac20 = User(email="fac20@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Karthik Raj", role="faculty", department="Civil Engineering", is_active=True, created_at=datetime.utcnow())
+            # IT Faculty
+            fac21 = User(email="fac21@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Meera Iyer", role="faculty", department="Information Technology", is_active=True, created_at=datetime.utcnow())
+            fac22 = User(email="fac22@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Ajay Verma", role="faculty", department="Information Technology", is_active=True, created_at=datetime.utcnow())
+            fac23 = User(email="fac23@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Sunita Shenoy", role="faculty", department="Information Technology", is_active=True, created_at=datetime.utcnow())
+            fac24 = User(email="fac24@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Tarun Kumar", role="faculty", department="Information Technology", is_active=True, created_at=datetime.utcnow())
+            fac25 = User(email="fac25@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Pooja Hegde", role="faculty", department="Information Technology", is_active=True, created_at=datetime.utcnow())
+            # AIDS Faculty
+            fac26 = User(email="fac26@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Amit Bose", role="faculty", department="AI & Data Science", is_active=True, created_at=datetime.utcnow())
+            fac27 = User(email="fac27@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Manish Pandey", role="faculty", department="AI & Data Science", is_active=True, created_at=datetime.utcnow())
+            fac28 = User(email="fac28@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Shreya Ghoshal", role="faculty", department="AI & Data Science", is_active=True, created_at=datetime.utcnow())
+            fac29 = User(email="fac29@kpi.edu", password_hash=hash_pw("faculty123"), name="Dr. Rakesh Jhunjhunwala", role="faculty", department="AI & Data Science", is_active=True, created_at=datetime.utcnow())
+            fac30 = User(email="fac30@kpi.edu", password_hash=hash_pw("faculty123"), name="Prof. Nidhi Awasthi", role="faculty", department="AI & Data Science", is_active=True, created_at=datetime.utcnow())
+
+            hod_cse = User(
+                email="hod.cse@kpi.edu",
+                password_hash=hash_pw("hod123"),
+                name="Prof. Sharma (CSE)",
+                role="hod",
                 department="Computer Science & Engineering",
                 is_active=True,
                 created_at=datetime.utcnow()
             )
-            coord = User(
-                email="coordinator@kpi.edu",
-                password_hash=hash_pw("coord123"),
-                name="Prof. Sunita Sharma",
-                role="coordinator",
+            hod_ece = User(
+                email="hod.ece@kpi.edu",
+                password_hash=hash_pw("hod123"),
+                name="Prof. Reddy (ECE)",
+                role="hod",
+                department="Electronics & Communication",
+                is_active=True,
+                created_at=datetime.utcnow()
+            )
+            hod_mech = User(
+                email="hod.mech@kpi.edu",
+                password_hash=hash_pw("hod123"),
+                name="Prof. Singh (MECH)",
+                role="hod",
+                department="Mechanical Engineering",
+                is_active=True,
+                created_at=datetime.utcnow()
+            )
+            hod_ce = User(
+                email="hod.ce@kpi.edu",
+                password_hash=hash_pw("hod123"),
+                name="Prof. Thomas (CE)",
+                role="hod",
+                department="Civil Engineering",
+                is_active=True,
+                created_at=datetime.utcnow()
+            )
+            hod_it = User(
+                email="hod.it@kpi.edu",
+                password_hash=hash_pw("hod123"),
+                name="Prof. Nambiar (IT)",
+                role="hod",
+                department="Information Technology",
+                is_active=True,
+                created_at=datetime.utcnow()
+            )
+            hod_ai = User(
+                email="hod.ai@kpi.edu",
+                password_hash=hash_pw("hod123"),
+                name="Prof. Bose (AIDS)",
+                role="hod",
                 department="AI & Data Science",
                 is_active=True,
                 created_at=datetime.utcnow()
             )
-            db.add_all([admin, faculty, coord])
+            all_fac = [fac1, fac2, fac3, fac4, fac5, fac6, fac7, fac8, fac9, fac10, fac11, fac12, fac13, fac14, fac15, fac16, fac17, fac18, fac19, fac20, fac21, fac22, fac23, fac24, fac25, fac26, fac27, fac28, fac29, fac30]
+            db.add_all([admin, hod_cse, hod_ece, hod_mech, hod_ce, hod_it, hod_ai] + all_fac)
             db.commit()
-            print("Seeded users.")
+            print("Seeded users (including 6 HODs and 30 Faculty).")
 
         # Seed students, KPIs, scores
         for i, student_data in enumerate(STUDENTS_DATA):
@@ -210,7 +254,7 @@ def seed():
             score = Score(
                 student_id=student_data["student_id"],
                 kpi_score=kpi_score,
-                career_readiness_score=get_career_readiness(kpi_score),
+                career_readiness_score=predict_career_readiness(kpi_score),
                 last_updated=datetime.utcnow() - timedelta(days=random.randint(0, 7))
             )
             db.add(score)
@@ -219,8 +263,11 @@ def seed():
         print(f"Successfully seeded {len(STUDENTS_DATA)} students with KPI and Score data!")
         print("\nSample login credentials:")
         print("  Admin:       admin@kpi.edu / admin123")
-        print("  Faculty:     faculty@kpi.edu / faculty123")
-        print("  Coordinator: coordinator@kpi.edu / coord123")
+        print("  Faculty 1:   fac01@kpi.edu / faculty123")
+        print("  Faculty X:   fac[01-30]@kpi.edu / faculty123")
+        print("  HOD CSE:     hod.cse@kpi.edu / hod123")
+        print("  HOD ECE:     hod.ece@kpi.edu / hod123")
+        print("  (and so on for hod.mech, hod.ce, hod.it, hod.ai)")
     except Exception as e:
         db.rollback()
         print(f"Error seeding database: {e}")

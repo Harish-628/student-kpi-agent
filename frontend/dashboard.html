@@ -1,402 +1,1944 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Student KPI Management System</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/dashboard.css">
+    <title>NeuralKPI — Dashboard</title>
+    <link rel="stylesheet" href="css/neon-theme.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            display: flex;
+            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: rgba(5, 13, 21, 0.97);
+            border-right: 1px solid rgba(0, 245, 255, 0.15);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 10;
+            transition: width .3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 72px;
+            min-width: 72px;
+        }
+
+        .sidebar-top {
+            padding: 24px 20px 16px;
+            border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+        }
+
+        .logo-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0077cc, #00f5ff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            box-shadow: 0 0 16px rgba(0, 245, 255, 0.4);
+        }
+
+        .logo-text {
+            font-family: var(--font-display);
+            font-size: .95rem;
+            font-weight: 900;
+            color: var(--neon-cyan);
+            letter-spacing: 2px;
+        }
+
+        .logo-sub {
+            font-family: var(--font-mono);
+            font-size: .6rem;
+            color: rgba(0, 245, 255, .4);
+            letter-spacing: 1px;
+        }
+
+        .sidebar.collapsed .logo-text,
+        .sidebar.collapsed .logo-sub {
+            display: none;
+        }
+
+        .nav-section {
+            padding: 16px 12px 4px;
+        }
+
+        .nav-label {
+            font-family: var(--font-mono);
+            font-size: .62rem;
+            color: rgba(0, 245, 255, .35);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0 8px;
+            margin-bottom: 6px;
+        }
+
+        .sidebar.collapsed .nav-label {
+            display: none;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 12px;
+            border-radius: var(--radius-sm);
+            color: rgba(120, 180, 220, .7);
+            text-decoration: none;
+            font-size: .875rem;
+            font-weight: 500;
+            transition: all .2s ease;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link:hover {
+            color: var(--neon-cyan);
+            background: rgba(0, 245, 255, .06);
+        }
+
+        .nav-link.active {
+            color: var(--neon-cyan);
+            background: rgba(0, 245, 255, .1);
+            box-shadow: inset 3px 0 0 var(--neon-cyan);
+        }
+
+        .nav-icon {
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 16px 12px;
+            border-top: 1px solid rgba(0, 245, 255, .1);
+        }
+
+        .user-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            background: rgba(0, 245, 255, .05);
+            border: 1px solid rgba(0, 245, 255, .12);
+            margin-bottom: 10px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: .9rem;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: .82rem;
+            color: #c8e8ff;
+        }
+
+        .user-role {
+            font-size: .7rem;
+            color: rgba(0, 245, 255, .5);
+            font-family: var(--font-mono);
+        }
+
+        .sidebar.collapsed .user-name,
+        .sidebar.collapsed .user-role {
+            display: none;
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 9px;
+            background: transparent;
+            border: 1px solid rgba(255, 0, 110, .3);
+            border-radius: var(--radius-sm);
+            color: var(--neon-pink);
+            font-size: .8rem;
+            cursor: pointer;
+            transition: all .2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 0, 110, .1);
+            box-shadow: 0 0 16px rgba(255, 0, 110, .25);
+        }
+
+        /* ── MAIN ── */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* ── TOP BAR ── */
+        .topbar {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 28px;
+            background: rgba(5, 13, 21, .95);
+            border-bottom: 1px solid rgba(0, 245, 255, .12);
+            flex-shrink: 0;
+            gap: 16px;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .toggle-sidebar-btn {
+            background: transparent;
+            border: 1px solid rgba(0, 245, 255, .2);
+            color: var(--neon-cyan);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all .2s;
+        }
+
+        .toggle-sidebar-btn:hover {
+            background: rgba(0, 245, 255, .08);
+            box-shadow: 0 0 12px rgba(0, 245, 255, .2);
+        }
+
+        .page-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            letter-spacing: 2px;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-wrap {
+            position: relative;
+        }
+
+        .search-wrap input {
+            background: rgba(0, 245, 255, .05);
+            border: 1px solid rgba(0, 245, 255, .2);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px 8px 36px;
+            color: #c8e8ff;
+            font-size: .82rem;
+            outline: none;
+            width: 220px;
+            transition: all .2s;
+        }
+
+        .search-wrap input:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 12px rgba(0, 245, 255, .15);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(0, 245, 255, .4);
+            font-size: .85rem;
+        }
+
+        .notif-btn {
+            position: relative;
+            background: rgba(0, 245, 255, .05);
+            border: 1px solid rgba(0, 245, 255, .2);
+            color: var(--neon-cyan);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all .2s;
+        }
+
+        .notif-btn:hover {
+            background: rgba(0, 245, 255, .1);
+        }
+
+        .notif-dot {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 8px;
+            height: 8px;
+            background: var(--neon-pink);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--neon-pink);
+            animation: neonPulse 1.5s infinite;
+        }
+
+        /* ── CONTENT AREA ── */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* ── SECTIONS ── */
+        .section {
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .section.active {
+            display: flex;
+            animation: fadeInUp .4s ease;
+        }
+
+        /* ── STAT CARDS ROW ── */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .stat-card {
+            padding: 22px 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            border: var(--border-neon);
+            backdrop-filter: blur(20px);
+            position: relative;
+            overflow: hidden;
+            transition: all .3s ease;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--c1), var(--c2));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+        }
+
+        .stat-card.cyan {
+            --c1: #0080ff;
+            --c2: #00f5ff;
+        }
+
+        .stat-card.purple {
+            --c1: #6600cc;
+            --c2: #bf00ff;
+        }
+
+        .stat-card.pink {
+            --c1: #cc0055;
+            --c2: #ff006e;
+        }
+
+        .stat-card.green {
+            --c1: #1a8800;
+            --c2: #39ff14;
+        }
+
+        .stat-card-icon {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card-val {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 900;
+            margin-bottom: 4px;
+            line-height: 1;
+        }
+
+        .stat-card.cyan .stat-card-val {
+            color: var(--neon-cyan);
+            text-shadow: var(--glow-cyan);
+        }
+
+        .stat-card.purple .stat-card-val {
+            color: var(--neon-purple);
+            text-shadow: var(--glow-purple);
+        }
+
+        .stat-card.pink .stat-card-val {
+            color: var(--neon-pink);
+            text-shadow: var(--glow-pink);
+        }
+
+        .stat-card.green .stat-card-val {
+            color: var(--neon-green);
+            text-shadow: var(--glow-green);
+        }
+
+        .stat-card-label {
+            font-size: .75rem;
+            color: rgba(120, 180, 220, .6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card-trend {
+            font-family: var(--font-mono);
+            font-size: .7rem;
+            color: var(--neon-green);
+            margin-top: 6px;
+        }
+
+        /* ── CHARTS ROW ── */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: var(--border-neon);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            backdrop-filter: blur(20px);
+        }
+
+        .chart-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .chart-card-title {
+            font-family: var(--font-display);
+            font-size: .85rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 220px;
+        }
+
+        /* ── LEADERBOARD ── */
+        .leaderboard-card {
+            background: var(--bg-card);
+            border: var(--border-neon);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            backdrop-filter: blur(20px);
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(0, 245, 255, .07);
+            margin-bottom: 8px;
+            transition: all .2s;
+            cursor: pointer;
+        }
+
+        .lb-row:hover {
+            background: rgba(0, 245, 255, .04);
+            border-color: rgba(0, 245, 255, .2);
+        }
+
+        .lb-rank {
+            font-family: var(--font-display);
+            font-size: .9rem;
+            font-weight: 900;
+            width: 28px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .rank-1 {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+        }
+
+        .rank-2 {
+            color: #c0c0c0;
+            text-shadow: 0 0 8px #c0c0c0;
+        }
+
+        .rank-3 {
+            color: #cd7f32;
+            text-shadow: 0 0 8px #cd7f32;
+        }
+
+        .rank-other {
+            color: rgba(120, 180, 220, .5);
+        }
+
+        .lb-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: .85rem;
+        }
+
+        .lb-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .lb-name {
+            font-weight: 600;
+            font-size: .85rem;
+            color: #c8e8ff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .lb-dept {
+            font-size: .72rem;
+            color: rgba(120, 180, 220, .5);
+            font-family: var(--font-mono);
+        }
+
+        .lb-score {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: .95rem;
+            flex-shrink: 0;
+        }
+
+        .lb-bar-wrap {
+            width: 100px;
+            flex-shrink: 0;
+        }
+
+        .lb-bar {
+            height: 4px;
+            background: rgba(0, 245, 255, .1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .lb-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #0080ff, #00f5ff);
+        }
+
+        /* ── STUDENTS TABLE SECTION ── */
+        .table-card {
+            background: var(--bg-card);
+            border: var(--border-neon);
+            border-radius: var(--radius-lg);
+            padding: 0;
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(0, 245, 255, .1);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(0, 245, 255, .06);
+        }
+
+        .filter-row input,
+        .filter-row select {
+            background: rgba(0, 245, 255, .05);
+            border: 1px solid rgba(0, 245, 255, .2);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            color: #c8e8ff;
+            font-size: .82rem;
+            outline: none;
+            transition: all .2s;
+        }
+
+        .filter-row input:focus,
+        .filter-row select:focus {
+            border-color: var(--neon-cyan);
+        }
+
+        .filter-row select option {
+            background: #0a1628;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        /* ── KPI PROFILE ── */
+        .kpi-grid-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .kpi-metric-card {
+            background: var(--bg-card);
+            border: var(--border-neon);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            text-align: center;
+            transition: all .3s;
+        }
+
+        .kpi-metric-card:hover {
+            border-color: rgba(0, 245, 255, .6);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 245, 255, .08);
+        }
+
+        .kpi-metric-icon {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+        }
+
+        .kpi-metric-val {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: var(--neon-cyan);
+            text-shadow: var(--glow-cyan);
+            margin-bottom: 4px;
+        }
+
+        .kpi-metric-label {
+            font-size: .72rem;
+            color: rgba(120, 180, 220, .6);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* ── AI CHAT ── */
+        .ai-section {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 20px;
+        }
+
+        .chat-card {
+            background: var(--bg-card);
+            border: var(--border-neon);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            height: 520px;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+        }
+
+        .chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(0, 245, 255, .15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .ai-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            box-shadow: 0 0 16px rgba(0, 245, 255, .3);
+            flex-shrink: 0;
+        }
+
+        .ai-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .7rem;
+            color: var(--neon-green);
+            font-family: var(--font-mono);
+        }
+
+        .ai-dot {
+            width: 7px;
+            height: 7px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--neon-green);
+            animation: neonPulse 1.5s infinite;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-msg {
+            max-width: 85%;
+        }
+
+        .chat-msg.user {
+            align-self: flex-end;
+        }
+
+        .chat-msg.ai {
+            align-self: flex-start;
+        }
+
+        .msg-bubble {
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            font-size: .85rem;
+            line-height: 1.5;
+        }
+
+        .chat-msg.user .msg-bubble {
+            background: rgba(0, 245, 255, .12);
+            border: 1px solid rgba(0, 245, 255, .25);
+            color: #c8e8ff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-msg.ai .msg-bubble {
+            background: rgba(191, 0, 255, .1);
+            border: 1px solid rgba(191, 0, 255, .25);
+            color: #d0c0ff;
+            border-bottom-left-radius: 4px;
+        }
+
+        .msg-time {
+            font-size: .65rem;
+            color: rgba(120, 180, 220, .4);
+            margin-top: 4px;
+            font-family: var(--font-mono);
+        }
+
+        .chat-msg.user .msg-time {
+            text-align: right;
+        }
+
+        .chat-input-row {
+            padding: 12px 16px;
+            border-top: 1px solid rgba(0, 245, 255, .15);
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(0, 245, 255, .05);
+            border: 1px solid rgba(0, 245, 255, .2);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            color: #c8e8ff;
+            font-size: .85rem;
+            outline: none;
+            transition: all .2s;
+            font-family: var(--font-body);
+        }
+
+        .chat-input:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 12px rgba(0, 245, 255, .15);
+        }
+
+        .chat-send-btn {
+            background: linear-gradient(135deg, #0077cc, #00f5ff);
+            color: #000;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 10px 16px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: .85rem;
+            transition: all .2s;
+        }
+
+        .chat-send-btn:hover {
+            box-shadow: var(--glow-cyan);
+        }
+
+        /* AI Insights panel */
+        .insights-card {
+            background: var(--bg-card);
+            border: var(--border-neon);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            height: 520px;
+            overflow-y: auto;
+        }
+
+        .insight-item {
+            padding: 14px;
+            background: rgba(0, 245, 255, .03);
+            border: 1px solid rgba(0, 245, 255, .12);
+            border-radius: var(--radius-sm);
+            transition: all .2s;
+        }
+
+        .insight-item:hover {
+            background: rgba(0, 245, 255, .07);
+            border-color: rgba(0, 245, 255, .25);
+        }
+
+        .insight-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: .65rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-family: var(--font-mono);
+            padding: 3px 8px;
+            border-radius: 100px;
+            margin-bottom: 8px;
+        }
+
+        .badge-tip {
+            background: rgba(57, 255, 20, .12);
+            color: var(--neon-green);
+            border: 1px solid rgba(57, 255, 20, .3);
+        }
+
+        .badge-warn {
+            background: rgba(255, 0, 110, .12);
+            color: var(--neon-pink);
+            border: 1px solid rgba(255, 0, 110, .3);
+        }
+
+        .badge-info {
+            background: rgba(0, 245, 255, .12);
+            color: var(--neon-cyan);
+            border: 1px solid rgba(0, 245, 255, .3);
+        }
+
+        .insight-text {
+            font-size: .82rem;
+            color: rgba(120, 180, 220, .8);
+            line-height: 1.5;
+        }
+
+        /* ── FLOATING AI AGENT ── */
+        .ai-floating-icon {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+            z-index: 9999;
+            transition: transform 0.2s, box-shadow 0.2s;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .ai-floating-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(0, 245, 255, 0.8);
+        }
+
+        .ai-floating-popup {
+            position: fixed;
+            left: 90px;
+            bottom: 20px;
+            width: 350px;
+            height: 500px;
+            background: rgba(5, 13, 21, 0.95);
+            border: 1px solid var(--neon-cyan);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 0 30px rgba(0, 245, 255, 0.3);
+            z-index: 9998;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            animation: slideUp 0.3s ease-out;
+            transform-origin: bottom left;
+        }
+
+        .ai-floating-popup.active {
+            display: flex;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media(max-width:1200px) {
+            .stat-cards {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .ai-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media(max-width:860px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+
+            .kpi-grid-section {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media(max-width:640px) {
+            .sidebar {
+                display: none;
+            }
+
+            .content-area {
+                padding: 16px;
+            }
+
+            .stat-cards {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .ai-floating-popup {
+                left: 10px;
+                right: 10px;
+                bottom: 90px;
+                width: auto;
+                height: 400px;
+            }
+        }
+    </style>
 </head>
-<body class="dashboard-body">
-    <!-- Navigation Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <span class="logo-icon">📊</span>
-                <span class="logo-text">KPI System</span>
+
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-scanlines"></div>
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-top">
+            <div class="logo-row">
+                <div class="logo-icon">⚡</div>
+                <div>
+                    <div class="logo-text">NEURALKPI</div>
+                    <div class="logo-sub">AI AGENT v2.0</div>
+                </div>
             </div>
         </div>
 
-        <nav class="sidebar-nav">
+        <nav style="flex:1;overflow-y:auto;padding-bottom:8px;">
             <div class="nav-section">
-                <h4 class="nav-section-title">Main</h4>
-                <ul id="mainNav">
-                    <li><a href="#dashboard" class="nav-link active" data-section="dashboard">
-                        <span class="nav-icon">🏠</span>
-                        <span>Dashboard</span>
-                    </a></li>
-                </ul>
+                <div class="nav-label">// Main</div>
+                <button class="nav-link active" data-section="dashboard">
+                    <span class="nav-icon">🏠</span><span class="nav-text">Dashboard</span>
+                </button>
+                <button class="nav-link" data-section="hod-profile" id="navHodProfileBtn" style="display: none;">
+                    <span class="nav-icon">👤</span><span class="nav-text">Personal Info</span>
+                </button>
+                <button class="nav-link" data-section="fac-profile" id="navFacProfileBtn" style="display: none;"
+                    onclick="switchSection('fac-profile')">
+                    <span class="nav-icon">👤</span><span class="nav-text">Personal Info</span>
+                </button>
             </div>
-
             <div class="nav-section">
-                <h4 class="nav-section-title">Management</h4>
-                <ul id="managementNav">
-                    <!-- Populated based on role -->
-                </ul>
+                <div class="nav-label">// Management</div>
+                <button class="nav-link" data-section="students">
+                    <span class="nav-icon">🎓</span><span class="nav-text">Students</span>
+                </button>
+                <button class="nav-link" data-section="kpi">
+                    <span class="nav-icon">📊</span><span class="nav-text">Student KPI</span>
+                </button>
+                <button class="nav-link" data-section="faculty" id="navFacultyBtn" style="display: none;">
+                    <span class="nav-icon">👨‍🏫</span><span class="nav-text">Faculty</span>
+                </button>
+                <button class="nav-link" data-section="fac-kpi" id="navFacKpiBtn" style="display: none;">
+                    <span class="nav-icon">📈</span><span class="nav-text">Faculty KPI</span>
+                </button>
+                <button class="nav-link" data-section="hods" id="navHodsBtn" style="display: none;">
+                    <span class="nav-icon">👥</span><span class="nav-text">HODs</span>
+                </button>
+                <button class="nav-link" data-section="hod-kpi" id="navHodKpiBtn" style="display: none;">
+                    <span class="nav-icon">📈</span><span class="nav-text">HOD KPI</span>
+                </button>
+                <button class="nav-link" data-section="leaderboard">
+                    <span class="nav-icon">🏆</span><span class="nav-text">Leaderboard</span>
+                </button>
             </div>
-
             <div class="nav-section">
-                <h4 class="nav-section-title">Reports</h4>
-                <ul id="reportsNav">
-                    <li><a href="#analytics" class="nav-link" data-section="analytics">
-                        <span class="nav-icon">📈</span>
-                        <span>Analytics</span>
-                    </a></li>
-                </ul>
+                <div class="nav-label">// AI Tools</div>
+                <button class="nav-link" data-section="analytics">
+                    <span class="nav-icon">📈</span><span class="nav-text">Analytics</span>
+                </button>
             </div>
         </nav>
 
         <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar" id="userAvatar">U</div>
-                <div class="user-details">
-                    <div class="user-name" id="userName">User Name</div>
-                    <div class="user-role" id="userRole">Role</div>
+            <div class="user-card">
+                <div class="user-avatar" id="sidebarAvatar">A</div>
+                <div>
+                    <div class="user-name" id="sidebarName">Admin</div>
+                    <div class="user-role" id="sidebarRole">System Admin</div>
                 </div>
             </div>
-            <button class="btn btn-logout" id="logoutBtn">
-                <span>🚪</span> Logout
-            </button>
+            <button class="logout-btn" id="logoutBtn">🚪 <span>Logout</span></button>
         </div>
     </aside>
 
-    <!-- Main Content Area -->
-    <main class="main-content">
-        <!-- Top Header -->
-        <header class="top-header">
-            <div class="header-left">
-                <button class="toggle-sidebar" id="toggleSidebar">☰</button>
-                <h1 id="pageTitle">Dashboard</h1>
+    <!-- ══ MAIN ══ -->
+    <div class="main">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="toggle-sidebar-btn" onclick="history.back()" title="Go Back"
+                    style="margin-right: 8px;">⬅</button>
+                <button class="toggle-sidebar-btn" id="toggleSidebar">☰</button>
+                <span class="page-title" id="pageTitle">DASHBOARD</span>
             </div>
-            <div class="header-right">
-                <div class="search-box">
-                    <input type="text" placeholder="Search...">
-                    <button>🔍</button>
+            <div class="topbar-right">
+                <div class="search-wrap">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="Search students..." id="globalSearch">
                 </div>
-                <div class="notifications">
-                    <button class="notification-btn">
-                        <span class="notification-icon">🔔</span>
-                        <span class="notification-badge">3</span>
-                    </button>
-                </div>
+                <button class="notif-btn">🔔<span class="notif-dot"></span></button>
             </div>
         </header>
 
-        <!-- Content Sections -->
-        <div class="content-wrapper">
-            <!-- Dashboard Section -->
-            <section id="dashboard-section" class="content-section active">
-                <div class="section-title">
-                    <h2>Welcome Back! 👋</h2>
-                    <p id="dashboardSubtitle" class="subtitle"></p>
+        <!-- Content -->
+        <div class="content-area">
+
+            <!-- ── DASHBOARD SECTION ── -->
+            <section class="section active" id="section-dashboard">
+                <!-- Admin Dashboard View -->
+                <div id="adminDashboardView">
+                    <div class="stat-cards">
+                        <div class="stat-card cyan">
+                            <div class="stat-card-icon">🎓</div>
+                            <div class="stat-card-val" id="cardStudents">21</div>
+                            <div class="stat-card-label">Total Students</div>
+                            <div class="stat-card-trend">▲ 3 this semester</div>
+                        </div>
+                        <div class="stat-card purple">
+                            <div class="stat-card-icon">⭐</div>
+                            <div class="stat-card-val" id="cardAvgKPI">—</div>
+                            <div class="stat-card-label">Avg KPI Score</div>
+                            <div class="stat-card-trend">▲ +4.2 vs last month</div>
+                        </div>
+                        <div class="stat-card green">
+                            <div class="stat-card-icon">✅</div>
+                            <div class="stat-card-val" id="cardHighReady">—</div>
+                            <div class="stat-card-label">High Readiness</div>
+                            <div class="stat-card-trend">▲ 2 new this week</div>
+                        </div>
+                        <div class="stat-card pink">
+                            <div class="stat-card-icon">🏢</div>
+                            <div class="stat-card-val">6</div>
+                            <div class="stat-card-label">Departments</div>
+                            <div class="stat-card-trend">● All active</div>
+                        </div>
+                    </div>
+
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">KPI Score Distribution</span>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chartRadar"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">Career Readiness</span>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chartDoughnut"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">Department Performance</span>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chartBar"></canvas></div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">KPI Trend (Monthly)</span>
+                            </div>
+                            <div class="chart-wrapper"><canvas id="chartLine"></canvas></div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- KPI Overview Cards -->
-                <div class="kpi-cards-grid" id="kpiCardsContainer">
-                    <!-- Populated dynamically based on role -->
+                <!-- Student Personal Dashboard View -->
+                <div id="studentDashboardView" style="display: none;">
+                    <div class="chart-card" style="margin-bottom: 24px;">
+                        <div class="chart-card-header">
+                            <span class="chart-card-title">My Profile</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+                            <div class="stat-card cyan">
+                                <div class="stat-card-label">Name</div>
+                                <div class="stat-card-val" id="studentProfileName" style="font-size: 1.2rem;">—</div>
+                                <div class="stat-card-trend" id="studentProfileId"
+                                    style="color: rgba(120, 180, 220, .6);">—</div>
+                            </div>
+                            <div class="stat-card purple">
+                                <div class="stat-card-label">Department</div>
+                                <div class="stat-card-val" id="studentProfileDept"
+                                    style="font-size: 1rem; line-height: 1.2;">—</div>
+                            </div>
+                            <div class="stat-card pink">
+                                <div class="stat-card-label">Year & Section</div>
+                                <div class="stat-card-val" style="font-size: 1.2rem;"><span
+                                        id="studentProfileYear">—</span> <span
+                                        style="font-size: 0.8rem; color: rgba(120,180,220,0.6);">Sec</span> <span
+                                        id="studentProfileSection">—</span></div>
+                            </div>
+                            <div class="stat-card green">
+                                <div class="stat-card-label">KPI Score & Readiness</div>
+                                <div class="stat-card-val" id="studentProfileScore" style="font-size: 1.5rem;">—</div>
+                                <div id="studentProfileReadiness" style="margin-top: 5px;">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">My KPI Breakdown</span>
+                            </div>
+                            <div class="chart-wrapper"
+                                style="position: relative; height: 380px; width: 100%; display: flex; justify-content: center; align-items: center;">
+                                <canvas id="studentRadarChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- AI Career Coach Recommendations -->
+                        <div class="chart-card" style="display: flex; flex-direction: column;">
+                            <div class="chart-card-header">
+                                <span class="chart-card-title">🤖 AI Career Coach Recommendations</span>
+                            </div>
+                            <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
+                                <div class="stat-card"
+                                    style="background: rgba(0, 245, 255, 0.05); border-left: 4px solid var(--neon-cyan); --c1: #0080ff; --c2: #00f5ff; padding: 16px;">
+                                    <div style="font-size: 1.2rem; margin-bottom: 8px;">🎯 Target Goal</div>
+                                    <div id="aiTargetGoal" style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">
+                                        Analyzing your KPIs...</div>
+                                </div>
+                                <div class="stat-card"
+                                    style="background: rgba(191, 0, 255, 0.05); border-left: 4px solid var(--neon-purple); --c1: #6600cc; --c2: #bf00ff; padding: 16px;">
+                                    <div style="font-size: 1.2rem; margin-bottom: 8px;">📊 Peer Comparison</div>
+                                    <div id="aiPeerComparison"
+                                        style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">Comparing with your
+                                        department...</div>
+                                </div>
+                                <div class="stat-card"
+                                    style="background: rgba(57, 255, 20, 0.05); border-left: 4px solid var(--neon-green); --c1: #1a8800; --c2: #39ff14; padding: 16px;">
+                                    <div style="font-size: 1.2rem; margin-bottom: 8px;">🔥 Trending Skills</div>
+                                    <div id="aiTrendingSkill"
+                                        style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">
+                                        Analyzing department trends...</div>
+                                </div>
+                                <div class="stat-card"
+                                    style="background: rgba(255, 0, 110, 0.05); border-left: 4px solid var(--neon-pink); --c1: #cc0055; --c2: #ff006e; padding: 16px;">
+                                    <div style="font-size: 1.2rem; margin-bottom: 8px;">🚀 Action Plan</div>
+                                    <div id="aiActionPlan" style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">
+                                        Formulating your
+                                        next steps...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── STUDENTS SECTION ── -->
+            <section class="section" id="section-students">
+                <div class="table-card">
+                    <div class="table-header">
+                        <div>
+                            <div class="section-heading">Students Database</div>
+                            <div class="section-sub">All enrolled students with KPI performance data</div>
+                        </div>
+                        <div style="display:flex; gap:10px;">
+                            <input type="file" id="studentCsvUpload" accept=".csv" style="display:none;"
+                                onchange="uploadStudentCSV(event)">
+                            <button class="btn btn-outline-cyan btn-sm" id="uploadCsvBtn"
+                                onclick="document.getElementById('studentCsvUpload').click()">⇧ Upload CSV</button>
+                            <button class="btn btn-solid-cyan btn-sm" id="addStudentBtn" onclick="openAddStudent()">+
+                                Add
+                                Student</button>
+                        </div>
+                    </div>
+                    <div class="filter-row">
+                        <input type="text" placeholder="🔍 Search by name or ID..." id="studentSearch"
+                            onkeyup="filterStudents()">
+                        <select id="deptFilter" onchange="filterStudents()">
+                            <option value="">All Departments</option>
+                            <option value="Computer Science & Engineering">CSE</option>
+                            <option value="Electronics & Communication">ECE</option>
+                            <option value="Mechanical Engineering">MECH</option>
+                            <option value="Civil Engineering">CE</option>
+                            <option value="Information Technology">IT</option>
+                            <option value="AI & Data Science">AIDS</option>
+                        </select>
+                        <select id="yearFilter" onchange="filterStudents()">
+                            <option value="">All Years</option>
+                            <option value="1">Year 1</option>
+                            <option value="2">Year 2</option>
+                            <option value="3">Year 3</option>
+                            <option value="4">Year 4</option>
+                        </select>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="neon-table" style="min-width:800px;">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Department</th>
+                                    <th>Section</th>
+                                    <th>Year</th>
+                                    <th>KPI Score</th>
+                                    <th>Career Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── FACULTY SECTION (HOD/Admin Only) ── -->
+            <section class="section" id="section-faculty">
+                <div class="table-card">
+                    <div class="table-header">
+                        <div>
+                            <div class="section-heading">Faculty Database</div>
+                            <div class="section-sub">Department faculty staff overview</div>
+                        </div>
+                        <button class="btn btn-solid-cyan btn-sm" id="addFacultyBtn" style="display: none;"
+                            onclick="openAddFacultyModal()">+ Add Faculty</button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="neon-table" style="min-width:800px;">
+                            <thead>
+                                <tr>
+                                    <th>Faculty ID</th>
+                                    <th>Name</th>
+                                    <th>Department</th>
+                                    <th>Specialization</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="facultyTbody">
+                                <!-- Filled by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── HODS SECTION (Admin Only) ── -->
+            <section class="section" id="section-hods">
+                <div class="table-card">
+                    <div class="table-header">
+                        <div>
+                            <div class="section-heading">HOD Database</div>
+                            <div class="section-sub">Heads of Department overview</div>
+                        </div>
+                        <button class="btn btn-solid-cyan btn-sm" id="addHodBtn" style="display: none;"
+                            onclick="openAddHODModal()">+ Add HOD</button>
+                    </div>
+                    <div class="table-scroll">
+                        <table class="neon-table" style="min-width:800px;">
+                            <thead>
+                                <tr>
+                                    <th>HOD Email</th>
+                                    <th>Name</th>
+                                    <th>Department</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hodsTbody">
+                                <!-- Filled by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── KPI TRACKER SECTION ── -->
+            <section class="section" id="section-kpi">
+                <div style="display:flex;align-items:center;justify-content:space-between; margin-bottom: 24px;">
+                    <div>
+                        <div class="section-heading">KPI Tracker</div>
+                        <div class="section-sub" id="kpiTrackerSubtitle">Select a student to view detailed KPI breakdown
+                        </div>
+                    </div>
+                    <div id="kpiSearchContainer">
+                        <select class="neon-select" style="width:260px;" id="kpiStudentSelect"
+                            onchange="loadStudentKPI()">
+                            <option value="">— Select Student —</option>
+                        </select>
+                    </div>
                 </div>
 
-                <!-- Charts Row -->
+                <div class="kpi-grid-section" id="kpiMetricsGrid">
+                    <!-- filled by JS -->
+                </div>
+
                 <div class="charts-row">
-                    <div class="chart-container">
-                        <h3>KPI Distribution</h3>
-                        <canvas id="kpiChart"></canvas>
+                    <div class="chart-card">
+                        <div class="chart-card-header"><span class="chart-card-title">KPI Breakdown</span></div>
+                        <div class="chart-wrapper"><canvas id="chartKPIRadar"></canvas></div>
                     </div>
-                    <div class="chart-container">
-                        <h3>Performance Trends</h3>
-                        <canvas id="trendsChart"></canvas>
+                    <div class="chart-card">
+                        <div class="chart-card-header"><span class="chart-card-title">Peer Comparison</span></div>
+                        <div class="chart-wrapper"><canvas id="chartKPIBar"></canvas></div>
                     </div>
                 </div>
 
-                <!-- Recent Activity -->
-                <div class="recent-activity">
-                    <h3>Recent Activity</h3>
-                    <div class="activity-list" id="activityList">
-                        <!-- Populated dynamically -->
+
+            </section>
+
+            <!-- ── FACULTY KPI TRACKER SECTION (HOD/Admin) ── -->
+            <section class="section" id="section-fac-kpi">
+                <div style="display:flex;align-items:center;justify-content:space-between; margin-bottom: 24px;">
+                    <div>
+                        <div class="section-heading">Faculty KPI Tracker</div>
+                        <div class="section-sub">Select a faculty member to view performance metrics</div>
+                    </div>
+                    <div>
+                        <select class="neon-select" style="width:260px;" id="facKpiSelect" onchange="loadFacultyKPI()">
+                            <option value="">— Select Faculty —</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="kpi-grid-section" id="facKpiMetricsGrid" style="margin-bottom: 24px;">
+                    <!-- filled by JS -->
+                </div>
+
+                <div class="charts-row" id="facKpiChartsArea" style="display:none;">
+                    <div class="chart-card" style="flex: 1;">
+                        <div class="chart-card-header"><span class="chart-card-title">Performance vs Targets</span>
+                        </div>
+                        <div class="chart-wrapper"><canvas id="chartFacKPIBar"></canvas></div>
                     </div>
                 </div>
             </section>
 
-            <!-- Students Section (Faculty, Coordinator, Admin) -->
-            <section id="students-section" class="content-section">
-                <div class="section-title">
-                    <h2>Student Management</h2>
-                    <button class="btn btn-primary" id="addStudentBtn">+ Add Student</button>
+            <!-- ── HOD KPI TRACKER SECTION (Admin) ── -->
+            <section class="section" id="section-hod-kpi">
+                <div style="display:flex;align-items:center;justify-content:space-between; margin-bottom: 24px;">
+                    <div>
+                        <div class="section-heading">HOD KPI Tracker</div>
+                        <div class="section-sub">Select a Head of Department to view performance metrics</div>
+                    </div>
+                    <div>
+                        <select class="neon-select" style="width:260px;" id="adminHodKpiSelect"
+                            onchange="loadAdminHODKPI()">
+                            <option value="">— Select HOD —</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="filters-bar">
-                    <input type="text" id="searchStudent" placeholder="Search students...">
-                    <select id="filterDepartment">
-                        <option value="">All Departments</option>
-                    </select>
-                    <select id="filterYear">
-                        <option value="">All Years</option>
-                        <option value="1">Year 1</option>
-                        <option value="2">Year 2</option>
-                        <option value="3">Year 3</option>
-                        <option value="4">Year 4</option>
-                    </select>
+                <div class="kpi-grid-section" id="allHodKpiMetricsGrid" style="margin-bottom: 24px;">
+                    <!-- filled by JS -->
                 </div>
 
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Student ID</th>
-                                <th>Name</th>
-                                <th>Department</th>
-                                <th>Year</th>
-                                <th>KPI Score</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="studentTableBody">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- KPI Section -->
-            <section id="kpi-section" class="content-section">
-                <div class="section-title">
-                    <h2>KPI Tracking</h2>
-                    <button class="btn btn-primary" id="addKPIBtn">+ Add KPI Data</button>
-                </div>
-
-                <div class="kpi-form-container" id="kpiFormContainer" style="display: none;">
-                    <form id="kpiForm" class="kpi-form">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="studentSelect">Select Student</label>
-                                <select id="studentSelect" required>
-                                    <option value="">-- Choose Student --</option>
-                                </select>
-                            </div>
+                <div class="charts-row" id="allHodKpiChartsArea" style="display:none;">
+                    <div class="chart-card" style="flex: 1;">
+                        <div class="chart-card-header"><span class="chart-card-title">Performance vs Targets</span>
                         </div>
-
-                        <div class="kpi-inputs-grid">
-                            <div class="form-group">
-                                <label for="internships">Internships</label>
-                                <input type="number" id="internships" min="0" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="certifications">Certifications</label>
-                                <input type="number" id="certifications" min="0" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="hackathons">Hackathons</label>
-                                <input type="number" id="hackathons" min="0" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="publications">Publications</label>
-                                <input type="number" id="publications" min="0" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="workshops">Workshops</label>
-                                <input type="number" id="workshops" min="0" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="projects">Projects</label>
-                                <input type="number" id="projects" min="0" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="clubActivities">Club Activities</label>
-                                <input type="number" id="clubActivities" min="0" value="0">
-                            </div>
-                            <div class="form-group">
-                                <label for="industrialVisits">Industrial Visits</label>
-                                <input type="number" id="industrialVisits" min="0" value="0">
-                            </div>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Save KPI Data</button>
-                            <button type="button" class="btn btn-secondary" id="cancelKPIBtn">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="kpi-list-container">
-                    <h3>KPI Records</h3>
-                    <div class="kpi-records" id="kpiRecords">
-                        <!-- Populated dynamically -->
+                        <div class="chart-wrapper"><canvas id="chartAllHodKPIBar"></canvas></div>
                     </div>
                 </div>
             </section>
 
-            <!-- Analytics Section -->
-            <section id="analytics-section" class="content-section">
-                <div class="section-title">
-                    <h2>Analytics & Reports</h2>
-                </div>
-
-                <div class="analytics-grid">
-                    <div class="analytics-card">
-                        <h3>Department Performance</h3>
-                        <canvas id="departmentChart"></canvas>
-                    </div>
-                    <div class="analytics-card">
-                        <h3>KPI Category Performance</h3>
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                    <div class="analytics-card">
-                        <h3>Year-wise Distribution</h3>
-                        <canvas id="yearChart"></canvas>
-                    </div>
-                    <div class="analytics-card">
-                        <h3>Career Readiness Score</h3>
-                        <canvas id="readinessChart"></canvas>
+            <!-- ── FACULTY PERSONAL PROFILE SECTION ── -->
+            <section class="section" id="section-fac-profile">
+                <div style="display:flex;align-items:center;justify-content:space-between; margin-bottom: 24px;">
+                    <div>
+                        <div class="section-heading">My Personal Info & KPIs</div>
+                        <div class="section-sub">Overview of your academic and institutional contributions</div>
                     </div>
                 </div>
 
-                <div class="export-actions">
-                    <button class="btn btn-secondary" id="exportPDFBtn">📄 Export as PDF</button>
-                    <button class="btn btn-secondary" id="exportExcelBtn">📊 Export as Excel</button>
-                </div>
-            </section>
-
-            <!-- User Management Section (Admin Only) -->
-            <section id="users-section" class="content-section">
-                <div class="section-title">
-                    <h2>User Management</h2>
-                    <button class="btn btn-primary" id="addUserBtn">+ Add User</button>
-                </div>
-
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Department</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="userTableBody">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Settings Section -->
-            <section id="settings-section" class="content-section">
-                <div class="section-title">
-                    <h2>Settings</h2>
-                </div>
-
-                <div class="settings-container">
-                    <div class="settings-card">
-                        <h3>Profile Settings</h3>
-                        <form id="profileForm" class="settings-form">
-                            <div class="form-group">
-                                <label for="fullName">Full Name</label>
-                                <input type="text" id="fullName" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="emailSettings">Email</label>
-                                <input type="email" id="emailSettings" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="department">Department</label>
-                                <input type="text" id="department" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Save Settings</button>
-                        </form>
-                    </div>
-
-                    <div class="settings-card">
-                        <h3>Change Password</h3>
-                        <form id="passwordForm" class="settings-form">
-                            <div class="form-group">
-                                <label for="currentPassword">Current Password</label>
-                                <input type="password" id="currentPassword" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="newPassword">New Password</label>
-                                <input type="password" id="newPassword" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="confirmPassword">Confirm Password</label>
-                                <input type="password" id="confirmPassword" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">Update Password</button>
-                        </form>
-                    </div>
-
-                    <div class="settings-card">
-                        <h3>Preferences</h3>
-                        <div class="preference-item">
-                            <label>
-                                <input type="checkbox" checked> Email Notifications
-                            </label>
-                        </div>
-                        <div class="preference-item">
-                            <label>
-                                <input type="checkbox" checked> Dark Mode
-                            </label>
-                        </div>
-                        <div class="preference-item">
-                            <label>
-                                <input type="checkbox"> Weekly Reports
-                            </label>
+                <div class="user-card"
+                    style="margin-bottom:24px;background:rgba(20,25,35,.8);border:1px solid rgba(0,245,255,.1);padding:20px;border-radius:12px;">
+                    <div style="display:flex;align-items:center;gap:15px;">
+                        <div class="user-avatar" id="facProfileAvatar"
+                            style="width:60px;height:60px;font-size:1.8rem;background:linear-gradient(135deg,#00f5ff,#bf00ff)">
+                            F</div>
+                        <div>
+                            <div class="user-name" id="facProfileName" style="font-size:1.4rem;">Faculty Name</div>
+                            <div class="user-role" id="facProfileDept" style="color:var(--neon-cyan);font-size:1rem;">
+                                Department</div>
+                            <div class="user-role" id="facProfileSpec"
+                                style="color:rgba(120,180,220,.8);font-size:.9rem;margin-top:2px;">
+                                Specialization</div>
                         </div>
                     </div>
                 </div>
-            </section>
-        </div>
-    </main>
 
-    <!-- Modals -->
-    <div id="addStudentModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Add New Student</h2>
-                <button class="close-modal">&times;</button>
+                <div class="kpi-grid-section" id="facProfileMetricsGrid" style="margin-bottom: 24px;">
+                    <!-- filled by JS -->
+                </div>
+
+                <div class="charts-row" id="facProfileChartsArea">
+                    <div class="chart-card" style="flex: 1;">
+                        <div class="chart-card-header"><span class="chart-card-title">Performance vs Targets</span>
+                        </div>
+                        <div class="chart-wrapper"><canvas id="chartFacProfileBar"></canvas></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── HOD PERSONAL PROFILE SECTION ── -->
+            <section class="section" id="section-hod-profile">
+                <div style="display:flex;align-items:center;justify-content:space-between; margin-bottom: 24px;">
+                    <div>
+                        <div class="section-heading">My Personal Info & KPIs</div>
+                        <div class="section-sub">Overview of your academic and institutional contributions</div>
+                    </div>
+                </div>
+
+                <div class="user-card"
+                    style="margin-bottom:24px;background:rgba(20,25,35,.8);border:1px solid rgba(0,245,255,.1);padding:20px;border-radius:12px;">
+                    <div style="display:flex;align-items:center;gap:15px;">
+                        <div class="user-avatar" id="hodProfileAvatar"
+                            style="width:60px;height:60px;font-size:1.8rem;background:linear-gradient(135deg,#ff006e,#bf00ff)">
+                            H</div>
+                        <div>
+                            <div class="user-name" id="hodProfileName" style="font-size:1.4rem;">Professor Name</div>
+                            <div class="user-role" id="hodProfileDept" style="color:var(--neon-cyan);font-size:1rem;">
+                                Department</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kpi-grid-section" id="hodKpiMetricsGrid" style="margin-bottom: 24px;">
+                    <!-- filled by JS -->
+                </div>
+
+                <div class="charts-row" id="hodKpiChartsArea">
+                    <div class="chart-card" style="flex: 1;">
+                        <div class="chart-card-header"><span class="chart-card-title">Performance vs Targets</span>
+                        </div>
+                        <div class="chart-wrapper"><canvas id="chartHodKPIBar"></canvas></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── LEADERBOARD SECTION ── -->
+            <section class="section" id="section-leaderboard">
+                <div class="section-heading">🏆 KPI Leaderboard</div>
+                <div class="section-sub" style="margin-bottom:20px;">Top students ranked by overall KPI score</div>
+                <div class="leaderboard-card" id="leaderboardContainer"></div>
+            </section>
+
+
+            <!-- ── ANALYTICS SECTION ── -->
+            <section class="section" id="section-analytics">
+                <div class="section-heading">📈 Advanced Analytics</div>
+                <div class="section-sub" style="margin-bottom:20px;">Deep-dive into performance data across all
+                    dimensions</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+                    <div class="chart-card" style="grid-column:span 2;">
+                        <div class="chart-card-header"><span class="chart-card-title">Year-wise KPI Comparison</span>
+                        </div>
+                        <div class="chart-wrapper" style="height:280px;"><canvas id="chartAnalyticsBar"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header"><span class="chart-card-title">Section Distribution</span></div>
+                        <div class="chart-wrapper" style="height:280px;"><canvas id="chartAnalyticsPie"></canvas></div>
+                    </div>
+                </div>
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-card-header"><span class="chart-card-title">Internship vs KPI Score</span>
+                        </div>
+                        <div class="chart-wrapper"><canvas id="chartScatter"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-card-header"><span class="chart-card-title">Top KPI Categories</span></div>
+                        <div class="chart-wrapper"><canvas id="chartCategories"></canvas></div>
+                    </div>
+                </div>
+            </section>
+
+        </div><!-- /content-area -->
+    </div><!-- /main -->
+
+    <!-- ── ADD STUDENT MODAL ── -->
+    <div class="neon-modal-overlay" id="addStudentModal">
+        <div class="neon-modal" style="min-width:500px;">
+            <div class="neon-modal-header">
+                <span class="neon-modal-title">+ ADD NEW STUDENT</span>
+                <button class="modal-close-btn" onclick="closeModal()">✕</button>
             </div>
-            <form id="addStudentForm" class="modal-form">
-                <div class="form-group">
-                    <label for="newStudentId">Student ID</label>
-                    <input type="text" id="newStudentId" required>
+            <form id="addStudentForm" style="display:flex;flex-direction:column;gap:18px;" onsubmit="addStudent(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div><label class="form-label">Student ID</label><input class="neon-input" id="f_id"
+                            placeholder="e.g. CSE006" required></div>
+                    <div><label class="form-label">Full Name</label><input class="neon-input" id="f_name"
+                            placeholder="Full name" required></div>
+                    <div>
+                        <label class="form-label">Department</label>
+                        <select class="neon-select" id="f_dept" required>
+                            <option value="">Select...</option>
+                            <option>Computer Science & Engineering</option>
+                            <option>Electronics & Communication</option>
+                            <option>Mechanical Engineering</option>
+                            <option>Civil Engineering</option>
+                            <option>Information Technology</option>
+                            <option>AI & Data Science</option>
+                        </select>
+                    </div>
+                    <div><label class="form-label">Section</label><input class="neon-input" id="f_section"
+                            placeholder="A / B / C" required></div>
+                    <div>
+                        <label class="form-label">Year</label>
+                        <select class="neon-select" id="f_year" required>
+                            <option value="">Select...</option>
+                            <option value="1">1st Year</option>
+                            <option value="2">2nd Year</option>
+                            <option value="3">3rd Year</option>
+                            <option value="4">4th Year</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="newStudentName">Full Name</label>
-                    <input type="text" id="newStudentName" required>
-                </div>
-                <div class="form-group">
-                    <label for="newStudentDept">Department</label>
-                    <input type="text" id="newStudentDept" required>
-                </div>
-                <div class="form-group">
-                    <label for="newStudentSection">Section</label>
-                    <input type="text" id="newStudentSection" required>
-                </div>
-                <div class="form-group">
-                    <label for="newStudentYear">Year</label>
-                    <select id="newStudentYear" required>
-                        <option value="1">1st Year</option>
-                        <option value="2">2nd Year</option>
-                        <option value="3">3rd Year</option>
-                        <option value="4">4th Year</option>
-                    </select>
-                </div>
-                <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">Add Student</button>
-                    <button type="button" class="btn btn-secondary close-modal">Cancel</button>
+                <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
+                    <button type="button" class="btn btn-neon-cyan btn-sm" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-solid-cyan btn-sm">Add Student</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="toast"></div>
+    <!-- ── ADD FACULTY MODAL ── -->
+    <div class="neon-modal-overlay" id="addFacultyModal">
+        <div class="neon-modal" style="min-width:500px;">
+            <div class="neon-modal-header">
+                <span class="neon-modal-title">+ ADD NEW FACULTY</span>
+                <button class="modal-close-btn" onclick="closeAddFacultyModal()">✕</button>
+            </div>
+            <form id="addFacultyForm" style="display:flex;flex-direction:column;gap:18px;" onsubmit="addFaculty(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div><label class="form-label">Faculty ID</label><input class="neon-input" id="fac_id"
+                            placeholder="e.g. FAC31" required></div>
+                    <div><label class="form-label">Full Name</label><input class="neon-input" id="fac_name"
+                            placeholder="Full name" required></div>
+                    <div>
+                        <label class="form-label">Department</label>
+                        <select class="neon-select" id="fac_dept" required>
+                            <option value="">Select...</option>
+                            <option>Computer Science & Engineering</option>
+                            <option>Electronics & Communication</option>
+                            <option>Mechanical Engineering</option>
+                            <option>Civil Engineering</option>
+                            <option>Information Technology</option>
+                            <option>AI & Data Science</option>
+                        </select>
+                    </div>
+                    <div><label class="form-label">Specialization</label><input class="neon-input" id="fac_spec"
+                            placeholder="e.g. Deep Learning" required></div>
+                    <div>
+                        <label class="form-label">Status</label>
+                        <select class="neon-select" id="fac_status" required>
+                            <option value="Active">Active</option>
+                            <option value="On Leave">On Leave</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
+                    <button type="button" class="btn btn-neon-cyan btn-sm"
+                        onclick="closeAddFacultyModal()">Cancel</button>
+                    <button type="submit" class="btn btn-solid-cyan btn-sm">Add Faculty</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-    <script src="js/dashboard.js"></script>
-    <script src="js/charts.js"></script>
+    <!-- ── ADD HOD MODAL ── -->
+    <div class="neon-modal-overlay" id="addHodModal">
+        <div class="neon-modal" style="min-width:500px;">
+            <div class="neon-modal-header">
+                <span class="neon-modal-title">+ ADD NEW HOD</span>
+                <button class="modal-close-btn" onclick="closeAddHODModal()">✕</button>
+            </div>
+            <form id="addHodForm" style="display:flex;flex-direction:column;gap:18px;" onsubmit="addHOD(event)">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div><label class="form-label">HOD Email (Login ID)</label><input class="neon-input" id="hod_email"
+                            placeholder="e.g. hod.new@kpi.edu" required></div>
+                    <div><label class="form-label">Full Name</label><input class="neon-input" id="hod_name"
+                            placeholder="Full name" required></div>
+                    <div>
+                        <label class="form-label">Department</label>
+                        <select class="neon-select" id="hod_dept" required>
+                            <option value="">Select...</option>
+                            <option>Computer Science & Engineering</option>
+                            <option>Electronics & Communication</option>
+                            <option>Mechanical Engineering</option>
+                            <option>Civil Engineering</option>
+                            <option>Information Technology</option>
+                            <option>AI & Data Science</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Status</label>
+                        <select class="neon-select" id="hod_status" required>
+                            <option value="Active">Active</option>
+                            <option value="On Leave">On Leave</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:8px;">
+                    <button type="button" class="btn btn-neon-cyan btn-sm" onclick="closeAddHODModal()">Cancel</button>
+                    <button type="submit" class="btn btn-solid-cyan btn-sm">Add HOD</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── TOAST & MODALS ── -->
+    <div id="toast" class="neon-toast"></div>
+
+    <div class="neon-modal-overlay" id="uploadModalOverlay">
+        <div class="neon-modal">
+            <div class="neon-modal-header">
+                <h2 class="neon-modal-title">Upload Certificate</h2>
+                <button class="modal-close-btn" onclick="closeUploadModal()">✖</button>
+            </div>
+            <div style="font-size: 0.9rem; color: rgba(120, 180, 220, 0.8); margin-bottom: 16px;">
+                Uploading evidence for: <strong id="uploadCategoryLabel"
+                    style="color: var(--neon-cyan);">Category</strong>
+            </div>
+            <form id="certificateUploadForm" style="display: flex; flex-direction: column; gap: 16px;">
+                <input type="hidden" id="uploadCategoryKey" value="">
+                <div>
+                    <label
+                        style="color: rgba(120, 180, 220, 0.8); font-size: 0.9rem; margin-bottom: 8px; display: block;">Certificate
+                        File (Image/PDF)</label>
+                    <input type="file" id="certificateFile" class="neon-input" style="width: 100%; padding: 10px;"
+                        accept="image/*,.pdf" required>
+                </div>
+                <button type="submit" class="btn btn-solid-cyan" id="uploadCertBtn" style="margin-top: 8px;">Upload
+                    Document</button>
+            </form>
+            <div id="uploadSuccessMsg"
+                style="display: none; margin-top: 16px; color: var(--neon-green); font-size: 0.95rem; align-items: center; gap: 8px;">
+                ✅ Document verified! KPI Score updated.
+            </div>
+        </div>
+    </div>
+
+    <!-- ── VIEW DOCUMENT MODAL ── -->
+    <div class="neon-modal-overlay" id="viewDocumentModalOverlay">
+        <div class="neon-modal" style="width: 500px; max-width: 95vw;">
+            <div class="neon-modal-header">
+                <h2 class="neon-modal-title">View Document</h2>
+                <button class="modal-close-btn" onclick="closeViewDocumentModal()">✖</button>
+            </div>
+            <div style="font-size: 0.9rem; color: rgba(120, 180, 220, 0.8); margin-bottom: 16px;">
+                Evidence for: <strong id="viewCategoryLabel" style="color: var(--neon-cyan);">Category</strong>
+            </div>
+            <div id="documentViewerContainer"
+                style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(0, 245, 255, 0.1); border-radius: 8px; height: 350px; padding: 10px; display: flex; flex-direction: column; gap: 15px; align-items: center; overflow-y: auto; position: relative;">
+                <!-- Content injected via JS -->
+            </div>
+            <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                <button class="btn btn-outline-cyan" onclick="closeViewDocumentModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── FLOATING AI AGENT ── -->
+    <div class="ai-floating-icon" id="aiFloatingIcon" title="AI Assistant">🤖</div>
+
+    <div class="ai-floating-popup" id="aiFloatingPopup">
+        <div class="chat-header">
+            <div class="ai-avatar">🤖</div>
+            <div style="flex:1;">
+                <div
+                    style="font-family:var(--font-display);font-size:.82rem;color:var(--neon-cyan);letter-spacing:1px;">
+                    NEURAL KPI AGENT</div>
+                <div class="ai-status">
+                    <div class="ai-dot"></div> ONLINE // READY
+                </div>
+            </div>
+            <button class="modal-close-btn" style="color:var(--neon-cyan); font-size: 1.2rem;"
+                onclick="toggleAIPopup()">✕</button>
+        </div>
+        <div class="chat-messages" id="floatingChatMessages"
+            style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px;">
+            <div class="chat-msg ai">
+                <div class="msg-bubble">👋 Hello! I'm your portable AI KPI Agent. How can I help you today?</div>
+                <div class="msg-time">Now</div>
+            </div>
+        </div>
+        <div class="chat-input-row"
+            style="padding:12px 16px; border-top:1px solid rgba(0, 245, 255, .15); display:flex; gap:8px;">
+            <input class="chat-input" id="floatingChatInput" placeholder="Ask about KPIs..."
+                onkeydown="if(event.key==='Enter') sendFloatingChat()">
+            <button class="chat-send-btn" onclick="sendFloatingChat()">▶</button>
+        </div>
+    </div>
+
+    <script>
+        // Floating AI Agent Logic
+        const aiIcon = document.getElementById('aiFloatingIcon');
+        const aiPopup = document.getElementById('aiFloatingPopup');
+
+        let isDragging = false;
+        let dragStartX, dragStartY;
+        let iconStartX, iconStartY;
+
+        // Toggle visibility with click (with simple drag prevention logic)
+        let clickStart = 0;
+
+        aiIcon.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+
+            const rect = aiIcon.getBoundingClientRect();
+            iconStartX = rect.left;
+            iconStartY = rect.top;
+
+            clickStart = Date.now();
+            aiIcon.style.transition = 'none'; // remove transition for smooth drag
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+
+            // Constrain left position
+            let newX = iconStartX + dx;
+            let newY = iconStartY + dy;
+
+            const maxX = window.innerWidth - aiIcon.offsetWidth;
+            const maxY = window.innerHeight - aiIcon.offsetHeight;
+
+            // Ensure within bounds
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+
+            // Set left and top directly, clear bottom/right values that could conflict
+            aiIcon.style.left = `${newX}px`;
+            aiIcon.style.top = `${newY}px`;
+            aiIcon.style.bottom = 'auto';
+            aiIcon.style.right = 'auto';
+
+            // Reposition popup smoothly based on icon position
+            repositionPopup(newX, newY);
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            aiIcon.style.transition = 'transform 0.2s, box-shadow 0.2s'; // restore transition
+
+            const dragTime = Date.now() - clickStart;
+            // Differentiate drag vs click (if very brief)
+            if (dragTime < 200) {
+                toggleAIPopup();
+            }
+        });
+
+        function repositionPopup(iconX, iconY) {
+            // Put popup relative to icon if possible, staying on screen
+            const padding = 20;
+            const popupW = 350;
+            const popupH = 500;
+
+            // Try to place to the right, else to the left
+            let popX = iconX + 80;
+            if (popX + popupW > window.innerWidth) {
+                popX = iconX - popupW - padding;
+            }
+
+            // Align bottom, but stay on screen
+            let popY = iconY - popupH + 60;
+            if (popY < 0) {
+                popY = padding;
+            }
+
+            // If on mobile (less than 640), keep default styles which rely on bottom/left via media queries
+            if (window.innerWidth > 640) {
+                aiPopup.style.left = `${Math.max(padding, popX)}px`;
+                aiPopup.style.top = `${Math.max(padding, popY)}px`;
+                aiPopup.style.bottom = 'auto';
+            }
+        }
+
+        function toggleAIPopup() {
+            aiPopup.classList.toggle('active');
+
+            // Update positioning immediately if opened
+            if (aiPopup.classList.contains('active')) {
+                const rect = aiIcon.getBoundingClientRect();
+                repositionPopup(rect.left, rect.top);
+                document.getElementById('floatingChatInput').focus();
+            }
+        }
+
+        function sendFloatingChat() {
+            const input = document.getElementById('floatingChatInput');
+            const messagesContainer = document.getElementById('floatingChatMessages');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            // Add user message
+            const userMsg = document.createElement('div');
+            userMsg.className = 'chat-msg user';
+            userMsg.innerHTML = `<div class="msg-bubble">${text}</div><div class="msg-time">Now</div>`;
+            messagesContainer.appendChild(userMsg);
+
+            input.value = '';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Simulate AI reply
+            const aiMsg = document.createElement('div');
+            aiMsg.className = 'chat-msg ai';
+            aiMsg.innerHTML = `<div class="msg-bubble"><div style="display:flex;gap:4px;align-items:center;height:20px;">
+                <div class="ai-dot"></div><div class="ai-dot" style="animation-delay:0.2s"></div><div class="ai-dot" style="animation-delay:0.4s"></div>
+            </div></div><div class="msg-time">Thinking...</div>`;
+            messagesContainer.appendChild(aiMsg);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Fetch real AI reply from backend
+            const storedUser = JSON.parse(localStorage.getItem('kpi_user') || '{"email": "guest", "role": "unknown"}');
+
+            fetch('http://localhost:8000/api/chatbot/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    query: text,
+                    user_id: storedUser.email.split('@')[0], // Approximation of ID based on email
+                    role: storedUser.role
+                })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    aiMsg.innerHTML = `<div class="msg-bubble">${data.response || "No response generated."}</div><div class="msg-time">Now</div>`;
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                })
+                .catch(err => {
+                    console.error("Chatbot API Error:", err);
+                    aiMsg.innerHTML = `<div class="msg-bubble" style="color:#ff006e">Error connecting to AI Agent Engine. Ensure backend is running!</div><div class="msg-time">Now</div>`;
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                });
+        }
+    </script>
+
+    <script src="js/neon-app.js"></script>
 </body>
+
 </html>

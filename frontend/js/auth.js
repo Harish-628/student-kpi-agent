@@ -57,7 +57,7 @@ class AuthManager {
             const validCredentials = {
                 'student@example.com': 'password123',
                 'faculty@example.com': 'password123',
-                'coordinator@example.com': 'password123',
+                'hod@example.com': 'password123',
                 'admin@example.com': 'admin123'
             };
 

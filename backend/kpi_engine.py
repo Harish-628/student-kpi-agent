@@ -1,6 +1,7 @@
 """
 KPI Engine for calculating student KPI scores and career readiness predictions.
 """
+import os
 
 def calculate_kpi_score(kpi_data):
     """
@@ -33,14 +34,14 @@ def calculate_kpi_score(kpi_data):
         ... }
         >>> score = calculate_kpi_score(data)
     """
-    # Define weights for each activity
+    # Define weights for each activity dynamically using environment variables
     weights = {
-        'internships': 25,
-        'hackathons': 20,
-        'certifications': 20,
-        'projects': 15,
-        'publications': 15,
-        'workshops': 10,
+        'internships': float(os.getenv('KPI_WEIGHT_INTERNSHIPS', '25')),
+        'certifications': float(os.getenv('KPI_WEIGHT_CERTIFICATIONS', '15')),
+        'hackathons': float(os.getenv('KPI_WEIGHT_HACKATHONS', '20')),
+        'publications': float(os.getenv('KPI_WEIGHT_PUBLICATIONS', '25')),
+        'workshops': float(os.getenv('KPI_WEIGHT_WORKSHOPS', '5')),
+        'projects': float(os.getenv('KPI_WEIGHT_PROJECTS', '10')),
         'industrial_visits': 10,
         'club_activities': 5
     }

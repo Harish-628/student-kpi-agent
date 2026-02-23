@@ -27,8 +27,16 @@ from backend.auth import (
     decode_access_token, create_demo_users
 )
 from backend.kpi_engine import calculate_kpi_score, predict_career_readiness
+from agent.langgraph_workflow import agent_workflow
+from agent.recommendation_engine import recommendation_engine
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api", tags=["api"])
+
+class ChatQueryRequest(BaseModel):
+    query: str
+    user_id: str
+    role: str
 
 # ============ Mock User Database (Replace with real DB after setup) ============
 MOCK_USERS = {}
@@ -52,16 +60,17 @@ def get_current_user(authorization: Optional[str] = Header(None), db: Session = 
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    user_data = payload.get("user")
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid token structure")
     
-    # For now, return user info from payload
+    # Return user info from payload
     return {
-        "id": user_id.get("id"),
-        "email": user_id.get("email"),
-        "role": user_id.get("role"),
-        "name": user_id.get("name")
+        "id": user_data.get("id"),
+        "email": user_data.get("email"),
+        "role": user_data.get("role"),
+        "name": user_data.get("name"),
+        "department": user_data.get("department")
     }
 
 
@@ -89,11 +98,13 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     
     # Create JWT token
     token_data = {
-        "sub": {
+        "sub": str(user['id']),
+        "user": {
             "id": user['id'],
             "email": user['email'],
             "role": user['role'],
-            "name": user['name']
+            "name": user['name'],
+            "department": user.get('department')
         }
     }
     access_token = create_access_token(token_data)
@@ -154,9 +165,9 @@ def get_current_user_info(current_user = Depends(get_current_user)):
 
 @router.post("/student/add", response_model=StudentResponse)
 def add_student(student: StudentCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    """Add a new student. Admin, Coordinator, Faculty only."""
-    if current_user["role"] not in ["admin", "coordinator", "faculty"]:
-        raise HTTPException(status_code=403, detail="Only admin/coordinator/faculty can add students")
+    """Add a new student. Admin, HOD, Faculty only."""
+    if current_user["role"] not in ["admin", "hod", "faculty"]:
+        raise HTTPException(status_code=403, detail="Only admin/hod/faculty can add students")
     
     db_student = Student(**student.dict())
     db.add(db_student)
@@ -168,6 +179,68 @@ def add_student(student: StudentCreate, db: Session = Depends(get_db), current_u
         raise HTTPException(status_code=400, detail="Student with this ID already exists")
     
     return db_student
+
+
+@router.post("/student/upload")
+async def upload_student_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Bulk upload students via CSV file."""
+    if current_user["role"] not in ["admin", "hod"]:
+        raise HTTPException(status_code=403, detail="Only admin/hod can bulk upload students")
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be a CSV")
+    
+    contents = await file.read()
+    csv_reader = csv.DictReader(io.StringIO(contents.decode('utf-8')))
+    
+    imported = 0
+    failed = 0
+    errors = []
+    
+    for row in csv_reader:
+        try:
+            student_id = row.get('student_id', '').strip()
+            name = row.get('name', '').strip()
+            if not student_id or not name:
+                failed += 1
+                errors.append(f"Row {row}: Missing required student_id or name")
+                continue
+                
+            student_data = {
+                'student_id': student_id,
+                'name': name,
+                'email': row.get('email', f"{student_id.lower()}@college.edu").strip(),
+                'department': row.get('department', 'Computer Science & Engineering').strip(),
+                'section': row.get('section', 'A').strip(),
+                'year': int(row.get('year', 1) or 1),
+                'gpa': float(row.get('gpa', 0.0) or 0.0),
+                'enrollment_date': datetime.utcnow()
+            }
+            
+            db_student = Student(**student_data)
+            db.add(db_student)
+            db.commit()
+            imported += 1
+        except IntegrityError:
+            db.rollback()
+            failed += 1
+            errors.append(f"Student {student_id}: Already exists")
+        except Exception as e:
+            db.rollback()
+            failed += 1
+            errors.append(f"Student {student_id}: {str(e)}")
+            
+    return {
+        "message": "Student CSV upload completed",
+        "imported": imported,
+        "failed": failed,
+        "errors": errors if errors else []
+    }
+
 
 
 @router.get("/student/{student_id}", response_model=StudentResponse)
@@ -192,8 +265,8 @@ def update_student(
     current_user = Depends(get_current_user)
 ):
     """Update student information."""
-    if current_user["role"] not in ["admin", "coordinator"]:
-        raise HTTPException(status_code=403, detail="Only admin/coordinator can update students")
+    if current_user["role"] not in ["admin", "hod"]:
+        raise HTTPException(status_code=403, detail="Only admin/hod can update students")
     
     student = db.query(Student).filter(Student.student_id == student_id).first()
     if not student:
@@ -217,11 +290,17 @@ def list_students(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """List students with optional filtering."""
+    """List students with optional filtering. Faculty and HODs only see their own department."""
+    
+    # Enforce department isolation for Faculty and HOD
+    if current_user["role"] in ["faculty", "hod"]:
+        department = current_user.get("department")
+        
     query = db.query(Student)
     
     if department:
         query = query.filter(Student.department == department)
+        
     if year:
         query = query.filter(Student.year == year)
     
@@ -258,8 +337,8 @@ def add_kpi(
     current_user = Depends(get_current_user)
 ):
     """Add KPI data for a student."""
-    if current_user["role"] not in ["admin", "coordinator", "faculty"]:
-        raise HTTPException(status_code=403, detail="Only admin/coordinator/faculty can add KPI")
+    if current_user["role"] not in ["admin", "hod", "faculty"]:
+        raise HTTPException(status_code=403, detail="Only admin/hod/faculty can add KPI")
     
     # Verify student exists
     student = db.query(Student).filter(Student.student_id == kpi.student_id).first()
@@ -287,8 +366,8 @@ def update_kpi(
     current_user = Depends(get_current_user)
 ):
     """Update existing KPI data."""
-    if current_user["role"] not in ["admin", "coordinator", "faculty"]:
-        raise HTTPException(status_code=403, detail="Only admin/coordinator/faculty can update KPI")
+    if current_user["role"] not in ["admin", "hod", "faculty"]:
+        raise HTTPException(status_code=403, detail="Only admin/hod/faculty can update KPI")
     
     db_kpi = db.query(KPI).filter(KPI.student_id == student_id).first()
     if not db_kpi:
@@ -321,8 +400,8 @@ async def upload_kpi_csv(
     current_user = Depends(get_current_user)
 ):
     """Bulk upload KPI data via CSV file."""
-    if current_user["role"] not in ["admin", "coordinator"]:
-        raise HTTPException(status_code=403, detail="Only admin/coordinator can bulk upload")
+    if current_user["role"] not in ["admin", "hod"]:
+        raise HTTPException(status_code=403, detail="Only admin/hod can bulk upload")
     
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="File must be a CSV")
@@ -387,8 +466,8 @@ def calculate_and_store_score(
     current_user = Depends(get_current_user)
 ):
     """Calculate KPI score and store in database."""
-    if current_user["role"] not in ["admin", "coordinator", "faculty"]:
-        raise HTTPException(status_code=403, detail="Only admin/coordinator/faculty can calculate scores")
+    if current_user["role"] not in ["admin", "hod", "faculty"]:
+        raise HTTPException(status_code=403, detail="Only admin/hod/faculty can calculate scores")
     
     kpi = db.query(KPI).filter(KPI.student_id == student_id).first()
     if not kpi:
@@ -478,22 +557,48 @@ def get_dashboard_analytics(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """Get analytics data for dashboard."""
-    total_students = db.query(func.count(Student.student_id)).scalar()
-    average_kpi = db.query(func.avg(Score.kpi_score)).scalar() or 0
-    average_gpa = db.query(func.avg(Student.gpa)).scalar() or 0
+    """Get analytics data for dashboard. Enforces department isolation for Faculty/HODs."""
+    
+    is_restricted = current_user["role"] in ["faculty", "hod"]
+    user_dept = current_user.get("department")
+
+    # Base query filter for isolation
+    student_query = db.query(Student)
+    if is_restricted:
+        student_query = student_query.filter(Student.department == user_dept)
+        
+    total_students = student_query.count()
+    
+    # KPI Average
+    kpi_query = db.query(func.avg(Score.kpi_score)).select_from(Student).join(Score, Student.student_id == Score.student_id)
+    if is_restricted:
+        kpi_query = kpi_query.filter(Student.department == user_dept)
+    average_kpi = kpi_query.scalar() or 0
+    
+    # GPA Average
+    gpa_query = db.query(func.avg(Student.gpa))
+    if is_restricted:
+        gpa_query = gpa_query.filter(Student.department == user_dept)
+    average_gpa = gpa_query.scalar() or 0
     
     # Department stats
-    dept_stats = db.query(
+    dept_stats_query = db.query(
         Student.department,
         func.count(Student.student_id).label('count'),
         func.avg(Score.kpi_score).label('avg_kpi')
-    ).outerjoin(Score).group_by(Student.department).all()
+    ).outerjoin(Score)
+    
+    if is_restricted:
+        dept_stats_query = dept_stats_query.filter(Student.department == user_dept)
+        
+    dept_stats = dept_stats_query.group_by(Student.department).all()
     
     # Get top performers
-    top_performers = db.query(Student).outerjoin(Score).order_by(
-        desc(Score.kpi_score)
-    ).limit(5).all()
+    top_performers_query = db.query(Student).join(Score, Student.student_id == Score.student_id)
+    if is_restricted:
+        top_performers_query = top_performers_query.filter(Student.department == user_dept)
+        
+    top_performers = top_performers_query.order_by(desc(Score.kpi_score)).limit(5).all()
     
     return {
         "total_students": total_students,
@@ -511,7 +616,7 @@ def get_dashboard_analytics(
             "student_id": s.student_id,
             "name": s.name,
             "kpi_score": db.query(Score).filter(Score.student_id == s.student_id).first().kpi_score
-        } for s in top_performers if db.query(Score).filter(Score.student_id == s.student_id).first()]
+        } for s in top_performers]
     }
 
 
@@ -591,6 +696,58 @@ def get_performance_trends(
         "starting_score": scores[0]
     }
 
+
+# ============ AI Intelligence Endpoints ============
+
+@router.post("/chatbot/query")
+def process_chatbot_query(
+    request: ChatQueryRequest,
+    db: Session = Depends(get_db)
+):
+    """Processes queries via LangGraph and Gemini for intelligent KPI responses."""
+    
+    # In this app architecture, request.user_id from the frontend JWT is often the email or student ID.
+    user_email = request.user_id 
+    
+    # If the student email is just an ID like 'cse001', format it into the generated college email
+    if "@" not in user_email and request.role == "student":
+        user_email = f"{user_email.lower()}@college.edu"
+
+    # Prepare inputs for LangGraph
+    initial_state = {
+        "query": request.query,
+        "user_role": request.role,
+        "user_email": user_email,
+        "context": "",
+        "response": ""
+    }
+    
+    # Run the agent workflow
+    final_state = agent_workflow.invoke(initial_state)
+    
+    return {
+        "response": final_state.get("response", "The Neural Agent failed to generate a response.")
+    }
+
+@router.get("/student/{student_id}/recommendation")
+def get_student_recommendation(
+    student_id: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Generates personalized AI career readiness recommendations based on KPI metrics."""
+    # In a full production setup, this context might be constructed dynamically or retrieved completely individually.
+    general_context = "Remind students that practical experience and certifications enhance career readiness heavily."
+    
+    recommendation = recommendation_engine.generate_recommendation(
+        student_id=student_id, 
+        context=general_context
+    )
+    
+    return {
+        "student_id": student_id,
+        "recommendation": recommendation
+    }
 
 # ============ Health Check ============
 

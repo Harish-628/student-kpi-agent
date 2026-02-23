@@ -17,7 +17,7 @@ class UserRegister(BaseModel):
     email: str
     password: str
     name: str
-    role: str = "student"  # student, faculty, coordinator, admin
+    role: str = "student"  # student, faculty, hod, admin
     department: Optional[str] = None
 
 class UserResponse(BaseModel):

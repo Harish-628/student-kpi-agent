@@ -45,7 +45,7 @@ d:\student-kpi-project\frontend\
 - Generate department reports
 - Manage teaching preferences
 
-### 3. **📋 Coordinator Dashboard**
+### 3. **📋 HOD Dashboard**
 - Manage all department students
 - Track department-wide KPI metrics
 - View comprehensive analytics
@@ -76,7 +76,7 @@ http://localhost:8080/frontend/index.html
 Click "📋 Demo Credentials" button to view available test accounts:
 - **Student**: student@example.com / password123
 - **Faculty**: faculty@example.com / password123
-- **Coordinator**: coordinator@example.com / password123
+- **HOD**: hod@example.com / password123
 - **Admin**: admin@example.com / admin123
 
 ---
@@ -131,7 +131,7 @@ Click "📋 Demo Credentials" button to view available test accounts:
 3. **Settings** - Profile, password, and preferences
 
 ### Additional Sections (Role-Dependent):
-- **Students** - Student management (Faculty, Coordinator, Admin)
+- **Students** - Student management (Faculty, HOD, Admin)
 - **KPI Tracking** - Monitor and update KPI data
 - **Users** - User management (Admin only)
 

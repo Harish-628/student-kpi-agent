@@ -171,10 +171,10 @@ Use these credentials to log in:
 - **Password:** `faculty123`
 - **Role:** Faculty
 
-### Option 4: Coordinator Account
-- **Email:** `coordinator@example.com`
-- **Password:** `coordinator123`
-- **Role:** Coordinator
+### Option 4: HOD Account
+- **Email:** `hod@example.com`
+- **Password:** `hod123`
+- **Role:** HOD
 
 ## 📊 Step 7: Explore the System
 
@@ -186,7 +186,7 @@ Use these credentials to log in:
 5. Compare with peers
 6. View milestones
 
-### Admin/Coordinator Dashboard (Login as Admin)
+### Admin/HOD Dashboard (Login as Admin)
 1. Use admin@example.com / admin123
 2. Add new students
 3. Upload KPI data
@@ -311,7 +311,7 @@ del student_kpi.db
 3. Check API docs at http://localhost:8000/docs
 
 ### For Data Import
-1. Use CSV upload feature in coordinator dashboard
+1. Use CSV upload feature in hod dashboard
 2. Or use `/api/kpi/upload` endpoint with CSV file
 
 ### For Advanced Features

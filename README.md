@@ -30,7 +30,7 @@ A complete, enterprise-grade student performance tracking and KPI management sys
 - 📊 Dashboard analytics with department-wise statistics
 - 🎯 Percentile ranking and peer benchmarking
 - 📈 Performance trend visualization
-- 🔐 Role-based access control (Admin, Coordinator, Faculty, Student)
+- 🔐 Role-based access control (Admin, HOD, Faculty, Student)
 - 🎨 Professional responsive frontend with 4 role-based dashboards
 - 📱 Mobile-friendly design
 - 🔄 Real-time score calculation
@@ -179,9 +179,9 @@ Run: `run.bat`
 
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|----------------|
-| POST | `/api/student/add` | Add new student | Yes (Admin/Coordinator/Faculty) |
+| POST | `/api/student/add` | Add new student | Yes (Admin/HOD/Faculty) |
 | GET | `/api/student/{student_id}` | Get student details | Yes |
-| PUT | `/api/student/{student_id}` | Update student info | Yes (Admin/Coordinator) |
+| PUT | `/api/student/{student_id}` | Update student info | Yes (Admin/HOD) |
 | GET | `/api/students` | List all students | Yes |
 | DELETE | `/api/student/{student_id}` | Delete student | Yes (Admin) |
 
@@ -253,7 +253,7 @@ curl -X GET http://localhost:8000/api/student/STU001 \
 - ✅ Calculate scores
 - ❌ Cannot delete students
 
-### 3. **Coordinator**
+### 3. **HOD**
 - ✅ All Faculty permissions
 - ✅ Bulk upload KPI data (CSV)
 - ✅ Delete student data
@@ -305,11 +305,11 @@ Role: admin
 Department: Administration
 ```
 
-### Coordinator Account
+### HOD Account
 ```
-Email: coordinator@example.com
-Password: coordinator123
-Role: coordinator
+Email: hod@example.com
+Password: hod123
+Role: hod
 Department: Academic Affairs
 ```
 
@@ -358,7 +358,7 @@ Department: CSE
 - Performance analytics
 - Bulk data upload
 
-### Coordinator Dashboard
+### HOD Dashboard
 - Complete department overview
 - Student management
 - Data quality monitoring
@@ -402,7 +402,7 @@ rm student_kpi.db
 
 1. **Admin** logs in → Adds new students and faculty
 2. **Faculty** logs in → Enters student KPI data
-3. **Coordinator** logs in → Verifies data, generates reports
+3. **HOD** logs in → Verifies data, generates reports
 4. **Student** logs in → Views personal performance and comparison
 5. **System** → Calculates scores, generates analytics
 

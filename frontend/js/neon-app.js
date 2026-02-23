@@ -81,8 +81,27 @@ function getReadinessBadge(r) {
 
 function getScoreColor(s) { return s >= 80 ? 'var(--neon-green)' : s >= 60 ? 'var(--neon-cyan)' : s >= 40 ? 'var(--neon-orange)' : 'var(--neon-pink)'; }
 
-// Build enriched student list
-const ENRICHED = STUDENTS.map(s => {
+// Retrieve user info early for filtering
+const storedUser = JSON.parse(localStorage.getItem('kpi_user') || '{"name":"Admin","role":"admin"}');
+
+// Build enriched student list, filtering by HOD department if applicable
+let rawStudents = STUDENTS;
+if (storedUser.role === 'hod' && storedUser.email) {
+  const deptMap = {
+    'hod.cse@kpi.edu': 'Computer Science & Engineering',
+    'hod.ece@kpi.edu': 'Electronics & Communication',
+    'hod.mech@kpi.edu': 'Mechanical Engineering',
+    'hod.ce@kpi.edu': 'Civil Engineering',
+    'hod.it@kpi.edu': 'Information Technology',
+    'hod.ai@kpi.edu': 'AI & Data Science'
+  };
+  const hodDept = deptMap[storedUser.email];
+  if (hodDept) {
+    rawStudents = STUDENTS.filter(s => s.dept === hodDept);
+  }
+}
+
+const ENRICHED = rawStudents.map(s => {
   const kpi = KPI_DATA[s.id];
   const score = calcKPIScore(kpi);
   const readiness = getReadiness(score);
@@ -130,14 +149,17 @@ function switchSection(name) {
   const sec = document.getElementById(`section-${name}`);
   if (sec) sec.classList.add('active');
   document.getElementById('pageTitle').textContent = ({
-    dashboard: 'DASHBOARD', students: 'STUDENTS', kpi: 'KPI TRACKER',
-    leaderboard: 'LEADERBOARD', ai: 'AI AGENT', analytics: 'ANALYTICS'
+    dashboard: 'DASHBOARD', students: 'STUDENTS', faculty: 'FACULTY', hods: 'HOD DATABASE', kpi: 'KPI TRACKER',
+    'fac-kpi': 'FACULTY KPI', 'hod-kpi': 'HOD KPI', 'hod-profile': 'PERSONAL INFO', 'fac-profile': 'PERSONAL INFO', leaderboard: 'LEADERBOARD', ai: 'AI AGENT', analytics: 'ANALYTICS'
   })[name] || name.toUpperCase();
   currentSection = name;
   if (name === 'leaderboard') renderLeaderboard();
   if (name === 'analytics') renderAnalyticsCharts();
-  if (name === 'ai') renderInsights();
   if (name === 'kpi') loadStudentKPI();
+  if (name === 'fac-kpi') initFacultyKPI();
+  if (name === 'hod-profile') renderHODProfile();
+  if (name === 'fac-profile') renderFacProfile();
+  if (name === 'hod-kpi') initAdminHODKPI();
 }
 
 // Sidebar collapse
@@ -145,17 +167,129 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
   document.getElementById('sidebar').classList.toggle('collapsed');
 });
 
+// UI Permissions
+// Faculty UI Permissions
+if (storedUser && (storedUser.role === 'hod' || storedUser.role === 'admin')) {
+  const navFac = document.getElementById('navFacultyBtn');
+  if (navFac) navFac.style.display = 'flex';
+  const navFacKpi = document.getElementById('navFacKpiBtn');
+  if (navFacKpi) navFacKpi.style.display = 'flex';
+}
+// HOD Personal profile permission
+if (storedUser && storedUser.role === 'hod') {
+  const navHod = document.getElementById('navHodProfileBtn');
+  if (navHod) navHod.style.display = 'flex';
+}
+// Faculty Personal profile permission
+if (storedUser && storedUser.role === 'faculty') {
+  const navFacProfile = document.getElementById('navFacProfileBtn');
+  if (navFacProfile) navFacProfile.style.display = 'flex';
+}
+// Admin exclusively viewing HOD DB and HOD KPIs
+if (storedUser && storedUser.role === 'admin') {
+  const navHods = document.getElementById('navHodsBtn');
+  if (navHods) navHods.style.display = 'flex';
+  const navHodKpi = document.getElementById('navHodKpiBtn');
+  if (navHodKpi) navHodKpi.style.display = 'flex';
+  const addFacBtn = document.getElementById('addFacultyBtn');
+  if (addFacBtn) addFacBtn.style.display = 'block';
+  const addHodBtn = document.getElementById('addHodBtn');
+  if (addHodBtn) addHodBtn.style.display = 'block';
+}
+
 // Logout
 document.getElementById('logoutBtn').addEventListener('click', () => {
   localStorage.removeItem('kpi_user');
-  window.location.href = 'neon-login.html';
+  window.location.href = 'index.html';
 });
 
 // Load user info
-const userInfo = JSON.parse(localStorage.getItem('kpi_user') || '{"name":"Admin","role":"admin"}');
+const userInfo = storedUser;
 document.getElementById('sidebarName').textContent = userInfo.name || 'Admin';
 document.getElementById('sidebarRole').textContent = userInfo.role || 'admin';
 document.getElementById('sidebarAvatar').textContent = (userInfo.name || 'A')[0].toUpperCase();
+
+// ── FACULTY & HOD DB RENDER ───────────────────────
+const HOD_LIST = [
+  { id: 'hod.cse@kpi.edu', name: 'Dr. Alan Turing', dept: 'Computer Science & Engineering', status: 'Active' },
+  { id: 'hod.ece@kpi.edu', name: 'Dr. Claude Shannon', dept: 'Electronics & Communication', status: 'Active' },
+  { id: 'hod.mech@kpi.edu', name: 'Dr. Henry Ford', dept: 'Mechanical Engineering', status: 'Active' },
+  { id: 'hod.ce@kpi.edu', name: 'Dr. John Smeaton', dept: 'Civil Engineering', status: 'Active' },
+  { id: 'hod.it@kpi.edu', name: 'Dr. Tim Berners-Lee', dept: 'Information Technology', status: 'Active' },
+  { id: 'hod.ai@kpi.edu', name: 'Dr. Geoffrey Hinton', dept: 'AI & Data Science', status: 'Active' }
+];
+
+const FACULTY_DB = [
+  // CSE
+  { id: 'FAC01', name: 'Dr. Ramesh Kumar', dept: 'Computer Science & Engineering', spec: 'AI & Machine Learning', status: 'Active', kpis: { iv: 3, ws: 5, cert: 2, pm: 12 } },
+  { id: 'FAC02', name: 'Prof. Anjali Desai', dept: 'Computer Science & Engineering', spec: 'Cloud Computing', status: 'Active', kpis: { iv: 1, ws: 2, cert: 4, pm: 8 } },
+  { id: 'FAC03', name: 'Dr. Vivek Sharma', dept: 'Computer Science & Engineering', spec: 'Cybersecurity', status: 'Active', kpis: { iv: 2, ws: 4, cert: 3, pm: 10 } },
+  { id: 'FAC04', name: 'Prof. Neha Singh', dept: 'Computer Science & Engineering', spec: 'Data Structures', status: 'Active', kpis: { iv: 4, ws: 3, cert: 1, pm: 6 } },
+  { id: 'FAC05', name: 'Dr. Arjun Patel', dept: 'Computer Science & Engineering', spec: 'Quantum Computing', status: 'On Leave', kpis: { iv: 0, ws: 1, cert: 2, pm: 2 } },
+  // ECE
+  { id: 'FAC06', name: 'Dr. Vikram Seth', dept: 'Electronics & Communication', spec: 'VLSI Design', status: 'Active', kpis: { iv: 5, ws: 2, cert: 3, pm: 9 } },
+  { id: 'FAC07', name: 'Prof. Neha Gupta', dept: 'Electronics & Communication', spec: 'IoT Systems', status: 'Active', kpis: { iv: 4, ws: 3, cert: 5, pm: 15 } },
+  { id: 'FAC08', name: 'Dr. Rohan Mehra', dept: 'Electronics & Communication', spec: 'Embedded Systems', status: 'Active', kpis: { iv: 2, ws: 5, cert: 1, pm: 11 } },
+  { id: 'FAC09', name: 'Prof. Anil Kapoor', dept: 'Electronics & Communication', spec: 'Signal Processing', status: 'Active', kpis: { iv: 1, ws: 4, cert: 2, pm: 8 } },
+  { id: 'FAC10', name: 'Dr. Priya Reddy', dept: 'Electronics & Communication', spec: 'Wireless Comms', status: 'Active', kpis: { iv: 3, ws: 2, cert: 4, pm: 14 } },
+  // MECH
+  { id: 'FAC11', name: 'Dr. Rajesh Pillai', dept: 'Mechanical Engineering', spec: 'Thermodynamics', status: 'Active', kpis: { iv: 5, ws: 2, cert: 1, pm: 10 } },
+  { id: 'FAC12', name: 'Prof. Sanjay Dutt', dept: 'Mechanical Engineering', spec: 'Fluid Mechanics', status: 'Active', kpis: { iv: 4, ws: 3, cert: 2, pm: 8 } },
+  { id: 'FAC13', name: 'Dr. Kiran Rao', dept: 'Mechanical Engineering', spec: 'Robotics', status: 'Active', kpis: { iv: 6, ws: 1, cert: 3, pm: 12 } },
+  { id: 'FAC14', name: 'Prof. Amit Shah', dept: 'Mechanical Engineering', spec: 'Manufacturing', status: 'Active', kpis: { iv: 2, ws: 5, cert: 1, pm: 7 } },
+  { id: 'FAC15', name: 'Dr. Sneha Verma', dept: 'Mechanical Engineering', spec: 'Automotive Eng', status: 'On Leave', kpis: { iv: 0, ws: 1, cert: 1, pm: 3 } },
+  // CE
+  { id: 'FAC16', name: 'Dr. Suresh Reddy', dept: 'Civil Engineering', spec: 'Structural Eng.', status: 'Active', kpis: { iv: 6, ws: 1, cert: 2, pm: 9 } },
+  { id: 'FAC17', name: 'Prof. Manoj Tiwari', dept: 'Civil Engineering', spec: 'Transportation', status: 'Active', kpis: { iv: 4, ws: 3, cert: 1, pm: 6 } },
+  { id: 'FAC18', name: 'Dr. Deepa Nair', dept: 'Civil Engineering', spec: 'Geotech Eng.', status: 'Active', kpis: { iv: 3, ws: 4, cert: 5, pm: 15 } },
+  { id: 'FAC19', name: 'Prof. Rahul Bose', dept: 'Civil Engineering', spec: 'Water Resources', status: 'Active', kpis: { iv: 5, ws: 2, cert: 3, pm: 11 } },
+  { id: 'FAC20', name: 'Dr. Karthik Raj', dept: 'Civil Engineering', spec: 'Urban Planning', status: 'Active', kpis: { iv: 2, ws: 5, cert: 2, pm: 8 } },
+  // IT
+  { id: 'FAC21', name: 'Prof. Meera Iyer', dept: 'Information Technology', spec: 'Cybersecurity', status: 'Active', kpis: { iv: 2, ws: 6, cert: 3, pm: 14 } },
+  { id: 'FAC22', name: 'Dr. Ajay Verma', dept: 'Information Technology', spec: 'Network Security', status: 'Active', kpis: { iv: 4, ws: 2, cert: 1, pm: 9 } },
+  { id: 'FAC23', name: 'Prof. Sunita Shenoy', dept: 'Information Technology', spec: 'Data Mining', status: 'Active', kpis: { iv: 3, ws: 4, cert: 4, pm: 11 } },
+  { id: 'FAC24', name: 'Dr. Tarun Kumar', dept: 'Information Technology', spec: 'Cloud Architecture', status: 'Active', kpis: { iv: 1, ws: 5, cert: 2, pm: 7 } },
+  { id: 'FAC25', name: 'Prof. Pooja Hegde', dept: 'Information Technology', spec: 'Software Eng.', status: 'On Leave', kpis: { iv: 0, ws: 0, cert: 1, pm: 2 } },
+  // AIDS
+  { id: 'FAC26', name: 'Prof. Amit Bose', dept: 'AI & Data Science', spec: 'Deep Learning', status: 'Active', kpis: { iv: 3, ws: 4, cert: 6, pm: 18 } },
+  { id: 'FAC27', name: 'Dr. Manish Pandey', dept: 'AI & Data Science', spec: 'Computer Vision', status: 'Active', kpis: { iv: 5, ws: 2, cert: 4, pm: 12 } },
+  { id: 'FAC28', name: 'Prof. Shreya Ghoshal', dept: 'AI & Data Science', spec: 'NLP', status: 'Active', kpis: { iv: 2, ws: 3, cert: 5, pm: 14 } },
+  { id: 'FAC29', name: 'Dr. Rakesh Jhunjhunwala', dept: 'AI & Data Science', spec: 'Big Data', status: 'Active', kpis: { iv: 4, ws: 5, cert: 3, pm: 10 } },
+  { id: 'FAC30', name: 'Prof. Nidhi Awasthi', dept: 'AI & Data Science', spec: 'Reinforcement Learning', status: 'Active', kpis: { iv: 1, ws: 6, cert: 2, pm: 9 } }
+];
+
+function getFilteredFaculty() {
+  let displayFac = FACULTY_DB;
+  if (userInfo && userInfo.role === 'hod' && userInfo.email) {
+    const deptMap = {
+      'hod.cse@kpi.edu': 'Computer Science & Engineering',
+      'hod.ece@kpi.edu': 'Electronics & Communication',
+      'hod.mech@kpi.edu': 'Mechanical Engineering',
+      'hod.ce@kpi.edu': 'Civil Engineering',
+      'hod.it@kpi.edu': 'Information Technology',
+      'hod.ai@kpi.edu': 'AI & Data Science'
+    };
+    const hodDept = deptMap[userInfo.email];
+    if (hodDept) displayFac = FACULTY_DB.filter(f => f.dept === hodDept);
+  }
+  return displayFac;
+}
+
+function renderFacultyTable() {
+  const tbody = document.getElementById('facultyTbody');
+  if (!tbody) return;
+  const displayFac = getFilteredFaculty();
+
+  tbody.innerHTML = displayFac.map((f, i) => `
+    <tr style="animation:fadeInUp .3s ease ${i * 0.03}s both;">
+      <td><span style="font-family:var(--font-mono);color:var(--neon-cyan);font-size:.8rem;">${f.id}</span></td>
+      <td><strong style="color:#e8f4ff;">${f.name}</strong></td>
+      <td><span style="color:rgba(120,180,220,.7);font-size:.82rem;">${DEPT_SHORT[f.dept] || f.dept}</span></td>
+      <td><span style="color:rgba(120,180,220,.7);">${f.spec}</span></td>
+      <td><span class="neon-badge" style="${f.status === 'Active' ? 'background:rgba(57,255,20,.1);color:var(--neon-green);border:1px solid rgba(57,255,20,.2);' : 'background:rgba(255,0,110,.1);color:var(--neon-pink);border:1px solid rgba(255,0,110,.2);'}"> ${f.status}</span></td>
+    </tr>
+  `).join('');
+}
 
 // ── DASHBOARD STATS ───────────────────────────────
 function initDashboardStats() {
@@ -243,6 +377,18 @@ function initDashboardStats() {
 
       return;
     }
+  }
+
+  // Hide Add Student button for faculty
+  if (userInfo && userInfo.role === 'faculty') {
+    const addBtn = document.getElementById('addStudentBtn');
+    if (addBtn) addBtn.style.display = 'none';
+  }
+
+  // Hide the department sort filter for HODs and Faculty
+  if (userInfo && (userInfo.role === 'hod' || userInfo.role === 'faculty')) {
+    const deptFilter = document.getElementById('deptFilter');
+    if (deptFilter) deptFilter.style.display = 'none';
   }
 
   const total = ENRICHED.length;
@@ -367,8 +513,16 @@ function initDashboardCharts() {
   // Dept Bar Chart
   const depts = [...new Set(STUDENTS.map(s => s.dept))];
   const deptAvgs = depts.map(d => {
-    const group = ENRICHED.filter(s => s.dept === d);
-    return parseFloat((group.reduce((a, s) => a + s.score, 0) / group.length).toFixed(1));
+    const group = STUDENTS.filter(s => s.dept === d);
+
+    // We must manually calculate scores since the raw STUDENTS array doesn't have the pre-calculated .score field that ENRICHED does
+    const sumScore = group.reduce((acc, student) => {
+      const kpi = KPI_DATA[student.id];
+      const score = calcKPIScore(kpi);
+      return acc + score;
+    }, 0);
+
+    return group.length ? parseFloat((sumScore / group.length).toFixed(1)) : 0;
   });
 
   barChart = new Chart(document.getElementById('chartBar'), {
@@ -540,13 +694,19 @@ function loadStudentKPI() {
   const kf = Object.keys(s.kpi);
   grid.innerHTML = kf.map(k => {
     // Add a plus button only for the logged-in student navigating their own tracker
-    const uploadBtn = (isStudent && id === s.id)
-      ? `<button class="upload-kpi-btn" onclick="openUploadModal('${k}', '${labels[k] || k}')" title="Upload Evidence" style="position:absolute; top:8px; right:8px; background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:var(--neon-cyan); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; transition:all 0.3s ease;">+</button>`
-      : '';
+    let actionBtns = '';
+    if (isStudent && id === s.id) {
+      actionBtns = `
+        <div style="position:absolute; top:8px; right:8px; display:flex; gap:6px;">
+          <button class="upload-kpi-btn" onclick="openViewDocumentModal('${k}', '${labels[k] || k}')" title="View Document" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:rgba(120,180,220,0.8); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; transition:all 0.3s ease;">👁️</button>
+          <button class="upload-kpi-btn" onclick="openUploadModal('${k}', '${labels[k] || k}')" title="Upload Evidence" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:var(--neon-cyan); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; transition:all 0.3s ease;">+</button>
+        </div>
+      `;
+    }
 
     return `
       <div class="kpi-metric-card" style="animation:fadeInUp .4s ease both; position:relative;">
-        ${uploadBtn}
+        ${actionBtns}
         <div class="kpi-metric-icon">${icons[k] || '📊'}</div>
         <div class="kpi-metric-val">${s.kpi[k]}</div>
         <div class="kpi-metric-label">${labels[k] || k}</div>
@@ -691,81 +851,8 @@ function renderInsights() {
 }
 
 // ── AI CHAT ───────────────────────────────────────
-const AI_RESPONSES = [
-  q => {
-    if (/top|best|highest/i.test(q)) {
-      const t = ENRICHED[0];
-      return `🏆 Top performer is <strong>${t.name}</strong> (${t.id}) with KPI score <strong>${t.score}</strong> — ${t.readiness}. Department: ${DEPT_SHORT[t.dept]}.`;
-    }
-  },
-  q => {
-    if (/average|avg/i.test(q)) {
-      const avg = (ENRICHED.reduce((a, s) => a + s.score, 0) / ENRICHED.length).toFixed(1);
-      return `📊 Average KPI score across all ${ENRICHED.length} students is <strong>${avg}/100</strong>.`;
-    }
-  },
-  q => {
-    if (/low|struggling|below/i.test(q)) {
-      const lows = ENRICHED.filter(s => s.score < 40);
-      return lows.length
-        ? `⚠️ ${lows.length} students have low KPI (<40): ${lows.map(s => s.name).join(', ')}. Recommend immediate mentoring.`
-        : '✅ No students are critically below threshold!';
-    }
-  },
-  q => {
-    if (/cse|computer science/i.test(q)) {
-      const dept = ENRICHED.filter(s => s.dept === 'Computer Science & Engineering');
-      const avg = (dept.reduce((a, s) => a + s.score, 0) / dept.length).toFixed(1);
-      return `💻 CSE has ${dept.length} students with avg KPI ${avg}. Top: ${dept[0].name} (${dept[0].score}).`;
-    }
-  },
-  q => {
-    if (/ai|data science/i.test(q)) {
-      const dept = ENRICHED.filter(s => s.dept === 'AI & Data Science');
-      const avg = (dept.reduce((a, s) => a + s.score, 0) / dept.length).toFixed(1);
-      return `🤖 AI & Data Science has ${dept.length} students with avg KPI ${avg} — highest performing department!`;
-    }
-  },
-  q => {
-    if (/department|dept/i.test(q)) {
-      const depts = [...new Set(ENRICHED.map(s => s.dept))];
-      const summary = depts.map(d => {
-        const g = ENRICHED.filter(s => s.dept === d);
-        return `${DEPT_SHORT[d]}: ${(g.reduce((a, s) => a + s.score, 0) / g.length).toFixed(1)}`;
-      }).join(' | ');
-      return `🏢 Department averages: ${summary}`;
-    }
-  },
-  q => {
-    if (/internship/i.test(q)) {
-      const sorted = [...ENRICHED].sort((a, b) => b.kpi.internships - a.kpi.internships);
-      return `💼 Most internships: ${sorted[0].name} (${sorted[0].kpi.internships}). Students with 3+ internships score significantly higher.`;
-    }
-  },
-  q => {
-    if (/hackathon/i.test(q)) {
-      const sorted = [...ENRICHED].sort((a, b) => b.kpi.hackathons - a.kpi.hackathons);
-      return `⚡ Hackathon leader: ${sorted[0].name} with ${sorted[0].kpi.hackathons} hackathons! Hackathons correlate strongly with higher KPI scores.`;
-    }
-  },
-  q => {
-    if (/recommendation|suggest|improve/i.test(q)) {
-      return `💡 AI Recommendations:\n1. Boost hackathon participation (high KPI impact)\n2. Encourage research publications\n3. Peer mentoring from top 5 students\n4. Industry connect for more internships`;
-    }
-  },
-];
-
-function getAIResponse(q) {
-  for (const fn of AI_RESPONSES) {
-    const r = fn(q);
-    if (r) return r;
-  }
-  return `🤖 I analyzed the data for your query. The system has ${ENRICHED.length} students across 6 departments. Try asking about top performers, department stats, or improvement recommendations!`;
-}
-
 function sendChat() {
   const input = document.getElementById('chatInput');
-  const msgs = document.getElementById('chatMessages');
   const q = input.value.trim();
   if (!q) return;
 
@@ -839,8 +926,346 @@ function renderAnalyticsCharts() {
   }
 }
 
+// ── FACULTY KPI RENDER ────────────────────────────
+function initFacultyKPI() {
+  const select = document.getElementById('facKpiSelect');
+  if (!select) return;
+
+  const displayFac = getFilteredFaculty();
+  select.innerHTML = '<option value="">— Select Faculty —</option>' +
+    displayFac.map(f => `<option value="${f.id}">${f.name} (${f.id})</option>`).join('');
+
+  document.getElementById('facKpiMetricsGrid').innerHTML = ''; // reset
+}
+
+function loadFacultyKPI() {
+  const fid = document.getElementById('facKpiSelect').value;
+  const grid = document.getElementById('facKpiMetricsGrid');
+  if (!fid) {
+    grid.innerHTML = '';
+    document.getElementById('facKpiChartsArea').style.display = 'none';
+    return;
+  }
+
+  const fac = FACULTY_DB.find(f => f.id === fid);
+  if (!fac) return;
+
+  const kpis = [
+    { label: 'Industrial Visits', val: fac.kpis.iv, icon: '🏭', color: 'cyan', target: 5 },
+    { label: 'Workshops', val: fac.kpis.ws, icon: '🛠️', color: 'purple', target: 4 },
+    { label: 'Certifications', val: fac.kpis.cert, icon: '📜', color: 'pink', target: 3 },
+    { label: 'Project Mentorship', val: fac.kpis.pm, icon: '🚀', color: 'green', target: 15 }
+  ];
+
+  grid.innerHTML = kpis.map((k, i) => {
+    const pct = Math.min(100, Math.round((k.val / k.target) * 100));
+    return `
+      <div class="kpi-card" style="animation:fadeInUp 0.4s ease ${i * 0.1}s both;">
+        <div class="kpi-card-header">
+          <span style="font-size:1.5rem">${k.icon}</span>
+          <span class="kpi-score" style="color:var(--neon-${k.color})">${k.val}<span style="font-size:1rem;color:rgba(120,180,220,.5)">/${k.target}</span></span>
+        </div>
+        <div class="kpi-title">${k.label}</div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-fill" style="width:${pct}%; background:var(--neon-${k.color})"></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:10px; font-size:.7rem; color:rgba(120,180,220,.5)">
+          <span>Progress</span>
+          <span style="color:var(--neon-${k.color})">${pct}%</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // ── Render Chart ──
+  const chartsArea = document.getElementById('facKpiChartsArea');
+  if (chartsArea) chartsArea.style.display = 'flex';
+
+  const ctx = document.getElementById('chartFacKPIBar');
+  if (ctx) {
+    let existingChart = Chart.getChart(ctx);
+    if (existingChart) existingChart.destroy();
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: kpis.map(k => k.label),
+        datasets: [
+          {
+            label: 'Actual Achieved',
+            data: kpis.map(k => k.val),
+            backgroundColor: kpis.map(k => {
+              const colors = { cyan: '#00f5ff', purple: '#bf00ff', pink: '#ff006e', green: '#39ff14' };
+              return (colors[k.color] || '#00f5ff') + '88';
+            }),
+            borderColor: kpis.map(k => {
+              const colors = { cyan: '#00f5ff', purple: '#bf00ff', pink: '#ff006e', green: '#39ff14' };
+              return colors[k.color] || '#00f5ff';
+            }),
+            borderWidth: 1.5,
+            borderRadius: 6,
+            order: 2
+          },
+          {
+            label: 'Target Goal',
+            data: kpis.map(k => k.target),
+            backgroundColor: 'rgba(120,180,220,0.1)',
+            borderColor: 'rgba(120,180,220,0.6)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            type: 'line',
+            pointRadius: 4,
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { color: 'rgba(120,180,220,.7)', padding: 15 } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: 'rgba(120,180,220,.7)' } },
+          y: { grid: { color: 'rgba(0,245,255,.05)' }, ticks: { color: 'rgba(120,180,220,.7)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+}
+
+// ── FACULTY PROFILE RENDER ────────────────────────
+function renderFacProfile() {
+  if (!userInfo || userInfo.role !== 'faculty') return;
+
+  const emailLen = userInfo.email.length;
+  // Match login email loosely to FACULTY_DB ID OR fallback via deterministic gen
+  const facMatch = FACULTY_DB.find(f => f.id.toLowerCase() === userInfo.email.split('@')[0].toLowerCase());
+
+  const facName = facMatch ? facMatch.name : userInfo.name;
+  const facDept = facMatch ? facMatch.dept : 'General Faculty';
+  const facSpec = facMatch ? facMatch.spec : 'Core Engineering';
+
+  document.getElementById('facProfileAvatar').textContent = facName[0].toUpperCase();
+  document.getElementById('facProfileName').textContent = facName;
+  document.getElementById('facProfileDept').textContent = facDept;
+  document.getElementById('facProfileSpec').textContent = facSpec;
+
+  if (!window.facKpis) {
+    if (facMatch && facMatch.kpis) {
+      window.facKpis = [
+        { id: 'iv', label: 'Industrial Visits', val: facMatch.kpis.iv, icon: '🏭', color: 'cyan', target: 5 },
+        { id: 'ws', label: 'Workshops', val: facMatch.kpis.ws, icon: '🛠️', color: 'purple', target: 4 },
+        { id: 'cert', label: 'Certifications', val: facMatch.kpis.cert, icon: '📜', color: 'pink', target: 3 },
+        { id: 'pm', label: 'Project Mentorship', val: facMatch.kpis.pm, icon: '👨‍🏫', color: 'green', target: 10 }
+      ];
+    } else {
+      window.facKpis = [
+        { id: 'iv', label: 'Industrial Visits', val: (emailLen % 4) + 1, icon: '🏭', color: 'cyan', target: 5 },
+        { id: 'ws', label: 'Workshops', val: (emailLen % 3) + 2, icon: '🛠️', color: 'purple', target: 4 },
+        { id: 'cert', label: 'Certifications', val: (emailLen % 2) + 1, icon: '📜', color: 'pink', target: 3 },
+        { id: 'pm', label: 'Project Mentorship', val: (emailLen % 6) + 5, icon: '👨‍🏫', color: 'green', target: 10 }
+      ];
+    }
+  }
+
+  const kpis = window.facKpis;
+  const grid = document.getElementById('facProfileMetricsGrid');
+
+  grid.innerHTML = kpis.map((k, i) => {
+    const actionBtns = `
+      <div style="position:absolute; top:8px; right:8px; display:flex; gap:6px;">
+        <button class="upload-kpi-btn" onclick="openViewDocumentModal('${k.id}', '${k.label}')" title="View Document" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:rgba(120,180,220,0.8); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; transition:all 0.3s ease;">👁️</button>
+        <button class="upload-kpi-btn" onclick="openUploadModal('${k.id}', '${k.label}')" title="Upload Evidence" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:var(--neon-cyan); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; transition:all 0.3s ease;">+</button>
+      </div>
+    `;
+
+    return `
+      <div class="kpi-metric-card" style="animation:fadeInUp .4s ease both; position:relative;">
+        ${actionBtns}
+        <div class="kpi-metric-icon">${k.icon}</div>
+        <div class="kpi-metric-val" style="color:var(--neon-${k.color})">${k.val}<span style="font-size:1rem;color:rgba(120,180,220,.5)">/${k.target}</span></div>
+        <div class="kpi-metric-label">${k.label}</div>
+      </div>
+    `;
+  }).join('');
+
+  // ── Render Chart ──
+  const chartsArea = document.getElementById('facProfileChartsArea');
+  if (chartsArea) chartsArea.style.display = 'flex';
+
+  const ctx = document.getElementById('chartFacProfileBar');
+  if (ctx) {
+    let existingChart = Chart.getChart(ctx);
+    if (existingChart) existingChart.destroy();
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: kpis.map(k => k.label),
+        datasets: [
+          {
+            label: 'Actual Achieved',
+            data: kpis.map(k => k.val),
+            backgroundColor: kpis.map(k => {
+              const colors = { cyan: '#00f5ff', purple: '#bf00ff', pink: '#ff006e', green: '#39ff14' };
+              return (colors[k.color] || '#00f5ff') + '88';
+            }),
+            borderColor: kpis.map(k => {
+              const colors = { cyan: '#00f5ff', purple: '#bf00ff', pink: '#ff006e', green: '#39ff14' };
+              return colors[k.color] || '#00f5ff';
+            }),
+            borderWidth: 1.5,
+            borderRadius: 6,
+            order: 2
+          },
+          {
+            label: 'Target Goal',
+            data: kpis.map(k => k.target),
+            backgroundColor: 'rgba(120,180,220,0.1)',
+            borderColor: 'rgba(120,180,220,0.6)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            type: 'line',
+            pointRadius: 4,
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { color: 'rgba(120,180,220,.7)', padding: 15 } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: 'rgba(120,180,220,.7)' } },
+          y: { grid: { color: 'rgba(0,245,255,.05)' }, ticks: { color: 'rgba(120,180,220,.7)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+}
+
+// ── HOD PROFILE RENDER ────────────────────────────
+function renderHODProfile() {
+  if (!userInfo || userInfo.role !== 'hod') return;
+
+  document.getElementById('hodProfileAvatar').textContent = userInfo.name[0].toUpperCase();
+  document.getElementById('hodProfileName').textContent = userInfo.name;
+
+  const deptMap = {
+    'hod.cse@kpi.edu': 'Computer Science & Engineering',
+    'hod.ece@kpi.edu': 'Electronics & Communication',
+    'hod.mech@kpi.edu': 'Mechanical Engineering',
+    'hod.ce@kpi.edu': 'Civil Engineering',
+    'hod.it@kpi.edu': 'Information Technology',
+    'hod.ai@kpi.edu': 'AI & Data Science'
+  };
+  document.getElementById('hodProfileDept').textContent = deptMap[userInfo.email] || 'Department Head';
+
+  // Use window.hodKpis to persist the HOD's KPIs between re-renders during the same session
+  if (!window.hodKpis) {
+    const emailLen = userInfo.email.length;
+    window.hodKpis = [
+      { id: 'iv', label: 'Industrial Visits', val: (emailLen % 4) + 2, icon: '🏭', color: 'cyan', target: 5 },
+      { id: 'ws', label: 'Workshops', val: (emailLen % 3) + 3, icon: '🛠️', color: 'purple', target: 4 },
+      { id: 'cert', label: 'Certifications', val: (emailLen % 2) + 2, icon: '📜', color: 'pink', target: 3 },
+      { id: 'pm', label: 'Project Mentorship', val: (emailLen % 6) + 10, icon: '🚀', color: 'green', target: 15 }
+    ];
+  }
+  const kpis = window.hodKpis;
+
+  const grid = document.getElementById('hodKpiMetricsGrid');
+  grid.innerHTML = kpis.map((k, i) => {
+    const actionBtns = `
+      <div style="position:absolute; top:8px; right:8px; display:flex; gap:6px;">
+        <button class="upload-kpi-btn" onclick="openViewDocumentModal('${k.id}', '${k.label}')" title="View Document" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:rgba(120,180,220,0.8); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; transition:all 0.3s ease;">👁️</button>
+        <button class="upload-kpi-btn" onclick="openUploadModal('${k.id}', '${k.label}')" title="Upload Evidence" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:var(--neon-cyan); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; transition:all 0.3s ease;">+</button>
+      </div>
+    `;
+
+    return `
+      <div class="kpi-metric-card" style="animation:fadeInUp .4s ease both; position:relative;">
+        ${actionBtns}
+        <div class="kpi-metric-icon">${k.icon}</div>
+        <div class="kpi-metric-val" style="color:var(--neon-${k.color})">${k.val}<span style="font-size:1rem;color:rgba(120,180,220,.5)">/${k.target}</span></div>
+        <div class="kpi-metric-label">${k.label}</div>
+      </div>
+    `;
+  }).join('');
+
+  // ── Render Chart ──
+  const ctx = document.getElementById('chartHodKPIBar');
+  if (ctx) {
+    let existingChart = Chart.getChart(ctx);
+    if (existingChart) existingChart.destroy();
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: kpis.map(k => k.label),
+        datasets: [
+          {
+            label: 'Actual Achieved',
+            data: kpis.map(k => k.val),
+            backgroundColor: kpis.map(k => {
+              const colors = { cyan: '#00f5ff', purple: '#bf00ff', pink: '#ff006e', green: '#39ff14' };
+              return (colors[k.color] || '#00f5ff') + '88';
+            }),
+            borderColor: kpis.map(k => {
+              const colors = { cyan: '#00f5ff', purple: '#bf00ff', pink: '#ff006e', green: '#39ff14' };
+              return colors[k.color] || '#00f5ff';
+            }),
+            borderWidth: 1.5,
+            borderRadius: 6,
+            order: 2
+          },
+          {
+            label: 'Target Goal',
+            data: kpis.map(k => k.target),
+            backgroundColor: 'rgba(120,180,220,0.1)',
+            borderColor: 'rgba(120,180,220,0.6)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            type: 'line',
+            pointRadius: 4,
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', labels: { color: 'rgba(120,180,220,.7)', padding: 15 } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: 'rgba(120,180,220,.7)' } },
+          y: { grid: { color: 'rgba(0,245,255,.05)' }, ticks: { color: 'rgba(120,180,220,.7)' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+}
+
 // ── ADD STUDENT MODAL ─────────────────────────────
 function openAddStudent() {
+  const deptSelect = document.getElementById('f_dept');
+
+  if (userInfo && userInfo.role === 'hod' && userInfo.email) {
+    const deptMap = {
+      'hod.cse@kpi.edu': 'Computer Science & Engineering',
+      'hod.ece@kpi.edu': 'Electronics & Communication',
+      'hod.mech@kpi.edu': 'Mechanical Engineering',
+      'hod.ce@kpi.edu': 'Civil Engineering',
+      'hod.it@kpi.edu': 'Information Technology',
+      'hod.ai@kpi.edu': 'AI & Data Science'
+    };
+    const hodDept = deptMap[userInfo.email];
+    if (hodDept) {
+      deptSelect.value = hodDept;
+      deptSelect.disabled = true; // Lock it
+    }
+  } else {
+    // Un-disable it for admin/others
+    deptSelect.disabled = false;
+  }
+
   document.getElementById('addStudentModal').classList.add('active');
 }
 function closeModal() {
@@ -850,9 +1275,11 @@ function addStudent(e) {
   e.preventDefault();
   const id = document.getElementById('f_id').value.trim().toUpperCase();
   const name = document.getElementById('f_name').value.trim();
-  const dept = document.getElementById('f_dept').value;
   const section = document.getElementById('f_section').value.trim().toUpperCase();
   const year = parseInt(document.getElementById('f_year').value);
+
+  // If disabled, `.value` might not submit correctly in some forms, though it works in JS
+  const dept = document.getElementById('f_dept').value;
 
   if (ENRICHED.find(s => s.id === id)) {
     showToast('Student ID already exists!', 'error'); return;
@@ -868,6 +1295,62 @@ function addStudent(e) {
   renderStudentsTable();
   showToast(`Student ${name} added successfully!`, 'success');
   document.getElementById('addStudentForm').reset();
+}
+
+// ── ADD FACULTY MODAL ─────────────────────────────
+function openAddFacultyModal() {
+  document.getElementById('addFacultyModal').classList.add('active');
+}
+function closeAddFacultyModal() {
+  document.getElementById('addFacultyModal').classList.remove('active');
+}
+function addFaculty(e) {
+  e.preventDefault();
+  const id = document.getElementById('fac_id').value.trim().toUpperCase();
+  const name = document.getElementById('fac_name').value.trim();
+  const dept = document.getElementById('fac_dept').value;
+  const spec = document.getElementById('fac_spec').value.trim();
+  const status = document.getElementById('fac_status').value;
+
+  if (FACULTY_DB.find(f => f.id === id)) {
+    showToast('Faculty ID already exists!', 'error'); return;
+  }
+
+  const defaultKpis = { iv: 0, ws: 0, cert: 0, pm: 0 };
+  FACULTY_DB.push({ id, name, dept, spec, status, kpis: defaultKpis });
+
+  closeAddFacultyModal();
+  renderFacultyTable();
+  showToast(`Faculty ${name} added successfully!`, 'success');
+  document.getElementById('addFacultyForm').reset();
+}
+
+// ── ADD HOD MODAL ─────────────────────────────────
+function openAddHODModal() {
+  document.getElementById('addHodModal').classList.add('active');
+}
+function closeAddHODModal() {
+  document.getElementById('addHodModal').classList.remove('active');
+}
+function addHOD(e) {
+  e.preventDefault();
+  const emailId = document.getElementById('hod_email').value.trim().toLowerCase();
+  const name = document.getElementById('hod_name').value.trim();
+  const dept = document.getElementById('hod_dept').value;
+  const status = document.getElementById('hod_status').value;
+
+  if (HOD_LIST.find(h => h.id === emailId)) {
+    showToast('HOD Email / Login ID already exists!', 'error'); return;
+  }
+
+  HOD_LIST.push({ id: emailId, name, dept, status });
+
+  closeAddHODModal();
+  renderHODTable();
+  // Refresh the KPI dropdown list
+  initAdminHODKPI();
+  showToast(`HOD ${name} added successfully!`, 'success');
+  document.getElementById('addHodForm').reset();
 }
 
 // ── GLOBAL SEARCH ─────────────────────────────────
@@ -904,17 +1387,138 @@ function closeUploadModal() {
   if (overlay) overlay.classList.remove('active');
 }
 
+// Global scope tracker for uploaded files simulating a database
+window.uploadedFilesRegistry = window.uploadedFilesRegistry || {};
+
+function openViewDocumentModal(categoryKey, categoryLabel) {
+  const overlay = document.getElementById('viewDocumentModalOverlay');
+  if (!overlay) return;
+  document.getElementById('viewCategoryLabel').textContent = categoryLabel;
+  const container = document.getElementById('documentViewerContainer');
+
+  // Check if we uploaded anything for this category during this session
+  const fileDataArray = window.uploadedFilesRegistry[categoryKey];
+
+  if (fileDataArray && fileDataArray.length > 0) {
+    // Show the uploaded files
+    container.innerHTML = fileDataArray.map((fileData, index) => {
+      if (fileData.type.startsWith('image/')) {
+        return `
+            <div style="width:100%; text-align:center;">
+              <div style="color:var(--neon-cyan); font-size:0.8rem; margin-bottom:5px;">Document #${index + 1}</div>
+              <img src="${fileData.url}" style="max-width:100%; max-height:300px; object-fit:contain; border-radius:4px; border:1px solid rgba(0,245,255,0.2);">
+            </div>
+          `;
+      } else {
+        return `
+            <div style="width:100%; text-align:center; padding:20px; border:1px solid rgba(0,245,255,0.1); border-radius:4px; margin-bottom:10px;">
+              <div style="font-size:2.5rem;margin-bottom:10px;">📄</div>
+              <div style="color:var(--neon-cyan);">Document #${index + 1} successfully uploaded.</div>
+              <div style="font-size:0.8rem;color:rgba(120,180,220,.5);margin-top:5px;">Preview not supported for PDFs from local storage memory inside this demo yet.</div>
+            </div>
+          `;
+      }
+    }).join('');
+  } else {
+    // Has not uploaded yet
+    container.innerHTML = `
+      <div style="text-align: center; color: rgba(120, 180, 220, 0.5);">
+        <div style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;">📂</div>
+        <div>No document has been uploaded for this category yet.</div>
+        <div style="font-size: 0.8rem; margin-top: 8px;">Click the <strong>+</strong> icon to upload proof.</div>
+      </div>
+    `;
+  }
+
+  overlay.classList.add('active');
+}
+
+function closeViewDocumentModal() {
+  const overlay = document.getElementById('viewDocumentModalOverlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
 document.getElementById('certificateUploadForm')?.addEventListener('submit', (e) => {
   e.preventDefault();
 
-  if (!userInfo || userInfo.role !== 'student' || !userInfo.email) return;
-  const sId = userInfo.email.split('@')[0].toUpperCase();
-  const studentInfo = ENRICHED.find(s => s.id === sId);
-  if (!studentInfo) return;
+  if (!userInfo || !userInfo.email) return;
 
   const category = document.getElementById('uploadCategoryKey').value;
   const fileInput = document.getElementById('certificateFile');
   if (!fileInput.files.length) return;
+
+  // HOD logic branch
+  if (userInfo.role === 'hod' && window.hodKpis) {
+    const btn = document.getElementById('uploadCertBtn');
+    btn.textContent = 'Uploading...';
+    btn.classList.add('loading');
+
+    // Render file preview data URL to store in registry so we can view it later
+    const file = fileInput.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (!window.uploadedFilesRegistry[category]) {
+          window.uploadedFilesRegistry[category] = [];
+        }
+        window.uploadedFilesRegistry[category].push({
+          url: e.target.result,
+          type: file.type
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    setTimeout(() => {
+      // Find the KPI and increment
+      const kpi = window.hodKpis.find(k => k.id === category);
+      if (kpi) kpi.val += 1;
+
+      // Re-render HOD profile to show update
+      if (document.getElementById('section-hod-profile').classList.contains('active')) {
+        renderHODProfile();
+      }
+
+      // Wrap up
+      btn.textContent = 'Upload Document';
+      btn.classList.remove('loading');
+      e.target.reset();
+
+      const successMsg = document.getElementById('uploadSuccessMsg');
+      successMsg.style.display = 'flex';
+      setTimeout(() => {
+        successMsg.style.display = 'none';
+        closeUploadModal();
+      }, 2000);
+
+      showToast(`Successfully uploaded and verified ${category.replace('_', ' ')}! (+ KPI points)`, 'success');
+    }, 1000);
+
+    return; // Stop here for HOD
+  }
+
+  // Student logic branch
+  if (userInfo.role !== 'student') return;
+
+  const sId = userInfo.email.split('@')[0].toUpperCase();
+  const studentInfo = ENRICHED.find(s => s.id === sId);
+  if (!studentInfo) return;
+
+  // Render file preview data URL to store in registry so we can view it later
+  const file = fileInput.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (!window.uploadedFilesRegistry[category]) {
+        window.uploadedFilesRegistry[category] = [];
+      }
+      window.uploadedFilesRegistry[category].push({
+        url: e.target.result,
+        type: file.type
+      });
+    };
+    reader.readAsDataURL(file);
+  }
 
   const btn = document.getElementById('uploadCertBtn');
   btn.textContent = 'Uploading...';
@@ -988,11 +1592,157 @@ document.getElementById('certificateUploadForm')?.addEventListener('submit', (e)
   }, 1000);
 });
 
+// ── ADMIN HOD VIEWS ───────────────────────────────
+function renderHODTable() {
+  const tbody = document.getElementById('hodsTbody');
+  if (!tbody) return;
+  tbody.innerHTML = HOD_LIST.map(hod => `
+    <tr>
+      <td><span style="color:var(--neon-cyan); font-family:var(--font-mono);">${hod.id}</span></td>
+      <td><strong>${hod.name}</strong></td>
+      <td>${hod.dept}</td>
+      <td><span class="neon-badge badge-high">${hod.status}</span></td>
+    </tr>
+  `).join('');
+}
+
+function initAdminHODKPI() {
+  const select = document.getElementById('adminHodKpiSelect');
+  if (!select) return;
+
+  // Clear existing options
+  select.innerHTML = '<option value="">— Select HOD —</option>' +
+    HOD_LIST.map(h => `<option value="${h.id}">${h.name} (${h.dept})</option>`).join('');
+
+  document.getElementById('allHodKpiMetricsGrid').innerHTML = ''; // reset
+}
+
+function loadAdminHODKPI() {
+  const hodId = document.getElementById('adminHodKpiSelect').value;
+  const grid = document.getElementById('allHodKpiMetricsGrid');
+  if (!hodId) {
+    grid.innerHTML = '';
+    document.getElementById('allHodKpiChartsArea').style.display = 'none';
+    return;
+  }
+
+  const hod = HOD_LIST.find(h => h.id === hodId);
+  if (!hod) return;
+
+  // Use the same deterministic generation for KPI counts based on email length used in renderHODProfile
+  const emailLen = hodId.length;
+
+  const kpis = [
+    { id: 'hod_iv', label: 'Industrial Visits', val: emailLen % 7 + 1, icon: '🏭', color: 'cyan', target: 5 },
+    { id: 'hod_ws', label: 'Workshops', val: emailLen % 5 + 2, icon: '🛠️', color: 'purple', target: 4 },
+    { id: 'hod_cert', label: 'Certifications', val: emailLen % 4 + 1, icon: '📜', color: 'pink', target: 3 },
+    { id: 'hod_pm', label: 'Project Mentorship', val: emailLen % 15 + 5, icon: '👨‍🏫', color: 'green', target: 10 },
+  ];
+
+  grid.innerHTML = kpis.map((k, i) => `
+    <div class="kpi-metric-card" style="animation:fadeInUp .4s ease both; position:relative;">
+      <div class="kpi-metric-icon">${k.icon}</div>
+      <div class="kpi-metric-val" style="color:var(--neon-${k.color})">${k.val}<span style="font-size:1rem;color:rgba(120,180,220,.5)">/${k.target}</span></div>
+      <div class="kpi-metric-label">${k.label}</div>
+    </div>
+  `).join('');
+
+  // Show Chart Section
+  document.getElementById('allHodKpiChartsArea').style.display = 'flex';
+
+  const ctx = document.getElementById('chartAllHodKPIBar');
+  if (ctx) {
+    let chartStatus = Chart.getChart(ctx);
+    if (chartStatus != undefined) {
+      chartStatus.destroy();
+    }
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: kpis.map(k => k.label),
+        datasets: [
+          {
+            label: 'Current Score',
+            data: kpis.map(k => k.val),
+            backgroundColor: kpis.map(k => `rgba(${k.color === 'cyan' ? '0,245,255' : k.color === 'purple' ? '191,0,255' : k.color === 'pink' ? '255,0,110' : '57,255,20'}, 0.7)`),
+            borderColor: kpis.map(k => `var(--neon-${k.color})`),
+            borderWidth: 1,
+            borderRadius: 4
+          },
+          {
+            label: 'Target',
+            data: kpis.map(k => k.target),
+            type: 'line',
+            borderColor: 'rgba(255,255,255,0.7)',
+            borderDash: [5, 5],
+            fill: false,
+            pointBackgroundColor: '#fff',
+            pointRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(0,245,255,.05)' }, ticks: { color: 'rgba(120,180,220,.7)' } },
+          x: { grid: { display: false }, ticks: { color: 'rgba(120,180,220,.7)' } }
+        },
+        plugins: {
+          legend: { labels: { color: 'rgba(120,180,220,.7)' } }
+        }
+      }
+    });
+  }
+}
+
+// ── STUDENT CSV UPLOAD ─────────────────────────────
+async function uploadStudentCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('uploadCsvBtn');
+  const ogText = btn.innerHTML;
+  btn.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border:2px solid;border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;"></span> Uploading...`;
+  btn.disabled = true;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const token = localStorage.getItem('kpi_token') || '';
+    const response = await fetch('http://localhost:8000/api/student/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    const result = await response.json();
+    if (response.ok) {
+      showToast('Success', `CSV Processed: ${result.imported} imported, ${result.failed} failed.`);
+      setTimeout(() => location.reload(), 2000); // Reload entire dashboard to refetch from DB
+    } else {
+      showToast('Error', result.detail || 'Upload failed.');
+    }
+  } catch (error) {
+    showToast('Error', 'Network error or server unreachable.');
+  } finally {
+    btn.innerHTML = ogText;
+    btn.disabled = false;
+    event.target.value = ''; // Reset file state
+  }
+}
+
 // ── INIT ──────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   initDashboardStats();
   initDashboardCharts();
   renderStudentsTable();
+  renderFacultyTable();
+  renderHODTable();
   populateKPIDropdown();
   loadStudentKPI();
+  initFacultyKPI();
 });

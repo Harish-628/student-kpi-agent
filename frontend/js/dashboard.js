@@ -33,8 +33,8 @@ class Dashboard {
                 kpiCards: ['totalStudents', 'averageKPI', 'topPerfomers'],
                 icon: '👨‍🏫'
             },
-            'coordinator': {
-                name: 'Coordinator Dashboard',
+            'hod': {
+                name: 'HOD Dashboard',
                 menuItems: ['dashboard', 'students', 'kpi', 'analytics', 'settings'],
                 kpiCards: ['departmentStudents', 'departmentKPI', 'departmentAverage'],
                 icon: '📋'
@@ -179,7 +179,7 @@ class Dashboard {
         const subtitles = {
             'student': 'Track and monitor your academic KPIs and career readiness',
             'faculty': 'Monitor your students\' performance and KPI metrics',
-            'coordinator': 'Manage department-wide KPI tracking and analytics',
+            'hod': 'Manage department-wide KPI tracking and analytics',
             'admin': 'System overview and administration'
         };
         document.getElementById('dashboardSubtitle').textContent = subtitles[this.user.role];
@@ -207,7 +207,7 @@ class Dashboard {
                 { icon: '📊', title: 'Average KPI', value: '78', change: '+5 this month', type: 'success' },
                 { icon: '🌟', title: 'Top Performers', value: '15', change: '+3 this month', type: 'success' }
             ],
-            'coordinator': [
+            'hod': [
                 { icon: '👥', title: 'Department Students', value: '450', change: '+25 this year', type: 'info' },
                 { icon: '📊', title: 'Department KPI Avg', value: '81', change: '+4 this month', type: 'success' },
                 { icon: '📈', title: 'Growth Rate', value: '8.5%', change: '+2.3%', type: 'success' }

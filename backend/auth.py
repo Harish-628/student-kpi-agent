@@ -95,10 +95,10 @@ def create_demo_users() -> list:
         },
         {
             "id": 3,
-            "email": "coordinator@example.com",
-            "password_hash": hash_password("coordinator123"),
-            "name": "Coordinator",
-            "role": "coordinator",
+            "email": "hod@example.com",
+            "password_hash": hash_password("hod123"),
+            "name": "HOD",
+            "role": "hod",
             "department": "Academic Affairs",
             "is_active": True
         },

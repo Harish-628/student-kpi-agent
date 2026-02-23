@@ -102,7 +102,7 @@ curl -X GET http://localhost:8000/api/auth/me \
 
 **Endpoint:** `POST /api/student/add`
 
-**Authorization:** Required (Admin, Coordinator, Faculty)
+**Authorization:** Required (Admin, HOD, Faculty)
 
 **Request:**
 ```bash
@@ -165,7 +165,7 @@ curl -X GET http://localhost:8000/api/student/STU001 \
 
 **Endpoint:** `PUT /api/student/{student_id}`
 
-**Authorization:** Required (Admin, Coordinator)
+**Authorization:** Required (Admin, HOD)
 
 **Request:**
 ```bash
@@ -268,7 +268,7 @@ curl -X DELETE http://localhost:8000/api/student/STU005 \
 
 **Endpoint:** `POST /api/kpi/add`
 
-**Authorization:** Required (Admin, Coordinator, Faculty)
+**Authorization:** Required (Admin, HOD, Faculty)
 
 **Request:**
 ```bash
@@ -313,7 +313,7 @@ curl -X POST http://localhost:8000/api/kpi/add \
 
 **Endpoint:** `PUT /api/kpi/{student_id}`
 
-**Authorization:** Required (Admin, Coordinator, Faculty)
+**Authorization:** Required (Admin, HOD, Faculty)
 
 **Request:**
 ```bash
@@ -369,7 +369,7 @@ curl -X GET http://localhost:8000/api/student/STU001/kpi \
 
 **Endpoint:** `POST /api/kpi/upload`
 
-**Authorization:** Required (Admin, Coordinator)
+**Authorization:** Required (Admin, HOD)
 
 **CSV Format:**
 ```csv
@@ -427,7 +427,7 @@ curl -X GET http://localhost:8000/api/student/STU001/score \
 
 **Endpoint:** `POST /api/student/{student_id}/calculate-score`
 
-**Authorization:** Required (Admin, Coordinator, Faculty)
+**Authorization:** Required (Admin, HOD, Faculty)
 
 **Request:**
 ```bash
@@ -712,7 +712,7 @@ The easiest way to test APIs is using Swagger UI:
 
 ```json
 {
-  "detail": "Only admin/coordinator can update students"
+  "detail": "Only admin/hod can update students"
 }
 // Status Code: 403
 ```
