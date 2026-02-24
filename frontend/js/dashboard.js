@@ -128,7 +128,7 @@ class Dashboard {
 
         // Add KPI Button
         document.getElementById('addKPIBtn')?.addEventListener('click', () => {
-            document.getElementById('kpiFormContainer').style.display = 
+            document.getElementById('kpiFormContainer').style.display =
                 document.getElementById('kpiFormContainer').style.display === 'none' ? 'block' : 'none';
         });
 
@@ -154,12 +154,12 @@ class Dashboard {
             e.preventDefault();
             const newPassword = document.getElementById('newPassword').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
-            
+
             if (newPassword !== confirmPassword) {
                 this.showToast('Passwords do not match', 'error');
                 return;
             }
-            
+
             this.showToast('Password changed successfully', 'success');
             document.getElementById('passwordForm').reset();
         });
@@ -195,7 +195,7 @@ class Dashboard {
 
     populateKPICards() {
         const container = document.getElementById('kpiCardsContainer');
-        
+
         const cardData = {
             'student': [
                 { icon: '📊', title: 'Your KPI Score', value: '87', change: '+5 this month', type: 'success' },
@@ -220,7 +220,7 @@ class Dashboard {
         };
 
         const data = cardData[this.user.role] || [];
-        
+
         container.innerHTML = data.map(card => `
             <div class="kpi-card ${card.type}">
                 <div class="card-icon">${card.icon}</div>
@@ -282,7 +282,7 @@ class Dashboard {
             const departments = [...new Set(studentData.map(s => s.dept))];
             const existingOptions = deptFilter.querySelectorAll('option');
             const lastOption = existingOptions[existingOptions.length - 1];
-            
+
             departments.forEach(dept => {
                 if (![...deptFilter.querySelectorAll('option')].some(opt => opt.value === dept)) {
                     const option = document.createElement('option');
@@ -364,6 +364,7 @@ class Dashboard {
         // KPI Chart
         const kpiCtx = document.getElementById('kpiChart');
         if (kpiCtx) {
+
             new Chart(kpiCtx, {
                 type: 'doughnut',
                 data: {
@@ -439,11 +440,11 @@ class Dashboard {
         document.querySelectorAll('.content-section').forEach(section => {
             section.classList.remove('active');
         });
-        
+
         const section = document.getElementById(`${sectionName}-section`);
         if (section) {
             section.classList.add('active');
-            document.getElementById('pageTitle').textContent = 
+            document.getElementById('pageTitle').textContent =
                 sectionName.charAt(0).toUpperCase() + sectionName.slice(1).replace('-', ' ');
         }
     }
@@ -507,7 +508,7 @@ class Dashboard {
         const toast = document.getElementById('toast');
         toast.textContent = message;
         toast.className = `toast show ${type}`;
-        
+
         setTimeout(() => {
             toast.classList.remove('show');
         }, 3000);

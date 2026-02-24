@@ -729,25 +729,27 @@ def process_chatbot_query(
         "response": final_state.get("response", "The Neural Agent failed to generate a response.")
     }
 
-@router.get("/student/{student_id}/recommendation")
-def get_student_recommendation(
-    student_id: str,
-    db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
-):
-    """Generates personalized AI career readiness recommendations based on KPI metrics."""
-    # In a full production setup, this context might be constructed dynamically or retrieved completely individually.
-    general_context = "Remind students that practical experience and certifications enhance career readiness heavily."
+@router.get("/notifications")
+def get_user_notifications(user_id: str, role: str):
+    """
+    Returns AI-generated notifications specifically tailored to the user's KPI performance.
+    Admins get a static welcome message since they don't have KPIs.
+    """
+    if role == "admin":
+        return [{
+            "title": "System Online",
+            "message": "Welcome Admin! Your NeuralKPI platform is operating normally."
+        }]
     
-    recommendation = recommendation_engine.generate_recommendation(
-        student_id=student_id, 
-        context=general_context
-    )
-    
-    return {
-        "student_id": student_id,
-        "recommendation": recommendation
-    }
+    # Generate insights for Faculty/HOD/Students
+    try:
+        notifications = recommendation_engine.generate_kpi_notifications(user_id, role)
+        return notifications
+    except Exception as e:
+        return [{
+            "title": "Notification Engine Offline",
+            "message": f"Could not generate insights: {str(e)}"
+        }]
 
 # ============ Health Check ============
 

@@ -84,16 +84,22 @@ function getScoreColor(s) { return s >= 80 ? 'var(--neon-green)' : s >= 60 ? 'va
 // Retrieve user info early for filtering
 const storedUser = JSON.parse(localStorage.getItem('kpi_user') || '{"name":"Admin","role":"admin"}');
 
-// Build enriched student list, filtering by HOD department if applicable
+// Build enriched student list, filtering by HOD/Faculty department if applicable
 let rawStudents = STUDENTS;
-if (storedUser.role === 'hod' && storedUser.email) {
+if ((storedUser.role === 'hod' || storedUser.role === 'faculty') && storedUser.email) {
   const deptMap = {
     'hod.cse@kpi.edu': 'Computer Science & Engineering',
+    'fac.cse@kpi.edu': 'Computer Science & Engineering',
     'hod.ece@kpi.edu': 'Electronics & Communication',
+    'fac.ece@kpi.edu': 'Electronics & Communication',
     'hod.mech@kpi.edu': 'Mechanical Engineering',
+    'fac.mech@kpi.edu': 'Mechanical Engineering',
     'hod.ce@kpi.edu': 'Civil Engineering',
+    'fac.ce@kpi.edu': 'Civil Engineering',
     'hod.it@kpi.edu': 'Information Technology',
-    'hod.ai@kpi.edu': 'AI & Data Science'
+    'fac.it@kpi.edu': 'Information Technology',
+    'hod.ai@kpi.edu': 'AI & Data Science',
+    'fac.ai@kpi.edu': 'AI & Data Science'
   };
   const hodDept = deptMap[storedUser.email];
   if (hodDept) {
@@ -434,13 +440,77 @@ function initDashboardCharts() {
             borderColor: '#00f5ff',
             backgroundColor: 'rgba(0,245,255,0.15)',
             pointBackgroundColor: '#00f5ff',
-            borderWidth: 2, pointRadius: 4
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: '#00f5ff',
+            borderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 9, // Enlarge point significantly on hover
           }]
         },
         options: {
           responsive: true, maintainAspectRatio: false,
-          scales: { r: { grid: { color: 'rgba(0,245,255,0.1)' }, angleLines: { color: 'rgba(0,245,255,0.15)' }, ticks: { backdropColor: 'transparent', color: 'rgba(0,245,255,0.5)', font: { size: 9 } }, pointLabels: { color: 'rgba(120,180,220,0.7)', font: { size: 10 } } } },
-          plugins: { legend: { display: false } },
+          scales: {
+            r: {
+              grid: { color: 'rgba(0,245,255,0.1)' },
+              angleLines: { color: 'rgba(0,245,255,0.15)' },
+              ticks: { backdropColor: 'transparent', color: 'rgba(0,245,255,0.5)', font: { size: 9 } },
+              pointLabels: { color: 'rgba(120,180,220,1)', font: { size: 12, weight: 'bold' } }
+            }
+          },
+          animation: {
+            duration: 400,
+            easing: 'easeOutQuart'
+          },
+          interaction: {
+            mode: 'nearest',
+            intersect: true,
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(17, 24, 39, 0.95)',
+              titleFont: { size: 15, family: "'Inter', sans-serif", weight: 'bold' },
+              bodyFont: { size: 14, family: "'Inter', sans-serif" },
+              padding: 14,
+              cornerRadius: 10,
+              borderColor: '#00f5ff',
+              borderWidth: 1,
+              displayColors: false,
+              callbacks: {
+                title: function (tooltipItems) {
+                  return tooltipItems[0].label + " Performance";
+                },
+                label: function (context) {
+                  return `⭐ My Score: ${context.parsed.r}`;
+                },
+                afterBody: function (tooltipItems) {
+                  const category = tooltipItems[0].label;
+
+                  // Field mapper directly injected to avoid scope issues
+                  const mapLabelToField = {
+                    'Internships': 'internships',
+                    'Certs': 'certifications',
+                    'Hackathons': 'hackathons',
+                    'Publications': 'publications',
+                    'Workshops': 'workshops',
+                    'Projects': 'projects',
+                    'Club': 'club_activities',
+                    'Ind. Visits': 'industrial_visits'
+                  };
+
+                  const fieldName = mapLabelToField[category];
+                  if (!fieldName) return '';
+
+                  // Calculate how the student is doing compared to the average
+                  const deptPeers = ENRICHED.filter(s => s.dept === studentInfo.dept);
+                  const deptAvg = deptPeers.length > 0 ? (deptPeers.reduce((a, s) => a + s.kpi[fieldName], 0) / deptPeers.length).toFixed(1) : studentInfo.kpi[fieldName];
+
+                  return `\n📊 Dept Average: ${deptAvg}`;
+                }
+              }
+            }
+          },
         }
       });
       return;
@@ -452,6 +522,18 @@ function initDashboardCharts() {
   const labels = ['Internships', 'Certs', 'Hackathons', 'Publications', 'Workshops', 'Projects', 'Club', 'Ind. Visits'];
   const avgVals = fields.map(f => parseFloat((ENRICHED.reduce((a, s) => a + s.kpi[f], 0) / ENRICHED.length).toFixed(1)));
 
+  // Field mapper for tooltips
+  const mapLabelToField = {
+    'Internships': 'internships',
+    'Certs': 'certifications',
+    'Hackathons': 'hackathons',
+    'Publications': 'publications',
+    'Workshops': 'workshops',
+    'Projects': 'projects',
+    'Club': 'club_activities',
+    'Ind. Visits': 'industrial_visits'
+  };
+
   radarChart = new Chart(document.getElementById('chartRadar'), {
     type: 'radar',
     data: {
@@ -462,9 +544,12 @@ function initDashboardCharts() {
         borderColor: '#00f5ff',
         backgroundColor: 'rgba(0,245,255,0.1)',
         pointBackgroundColor: '#00f5ff',
-        pointBorderColor: '#00f5ff',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: '#00f5ff',
         borderWidth: 2,
         pointRadius: 4,
+        pointHoverRadius: 9, // Enlarge point significantly on hover
       }]
     },
     options: {
@@ -474,10 +559,52 @@ function initDashboardCharts() {
           grid: { color: 'rgba(0,245,255,0.1)' },
           angleLines: { color: 'rgba(0,245,255,0.15)' },
           ticks: { backdropColor: 'transparent', color: 'rgba(0,245,255,0.5)', font: { size: 9 } },
-          pointLabels: { color: 'rgba(120,180,220,0.7)', font: { size: 10 } },
+          pointLabels: { color: 'rgba(120,180,220,1)', font: { size: 12, weight: 'bold' } },
         }
       },
-      plugins: { legend: { display: false } },
+      // Native animation settings
+      animation: {
+        duration: 400,
+        easing: 'easeOutQuart'
+      },
+      interaction: {
+        mode: 'nearest',
+        intersect: true,
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.95)',
+          titleFont: { size: 15, family: "'Inter', sans-serif", weight: 'bold' },
+          bodyFont: { size: 14, family: "'Inter', sans-serif" },
+          padding: 14,
+          cornerRadius: 10,
+          borderColor: '#00f5ff',
+          borderWidth: 1,
+          displayColors: false,
+          callbacks: {
+            title: function (tooltipItems) {
+              return tooltipItems[0].label + " Statistics";
+            },
+            label: function (context) {
+              return `⭐ Avg Expected Score: ${context.parsed.r}`;
+            },
+            afterBody: function (tooltipItems) {
+              const category = tooltipItems[0].label;
+              const fieldName = mapLabelToField[category];
+
+              if (!fieldName) return '';
+
+              // Ensure calculations perfectly scope by the role's ENRICHED pool (dept vs admin)
+              const participated = ENRICHED.filter(s => s.kpi[fieldName] > 0).length;
+              // Mock winners/high-achievers as KPI >= 3 for context
+              const winners = ENRICHED.filter(s => s.kpi[fieldName] >= 3).length;
+
+              return `\n👥 Attended: ${participated} Students\n🏆 Prize Winners: ${winners} Students`;
+            }
+          }
+        }
+      }
     }
   });
 
@@ -721,19 +848,51 @@ function loadStudentKPI() {
     data: {
       labels: kf.map(k => labels[k]),
       datasets: [
-        { label: s.name, data: kf.map(k => s.kpi[k]), borderColor: '#00f5ff', backgroundColor: 'rgba(0,245,255,0.15)', pointBackgroundColor: '#00f5ff', borderWidth: 2, pointRadius: 4 },
+        { label: s.name, data: kf.map(k => s.kpi[k]), borderColor: '#00f5ff', backgroundColor: 'rgba(0,245,255,0.15)', pointBackgroundColor: '#00f5ff', pointHoverBackgroundColor: '#fff', pointHoverBorderColor: '#00f5ff', borderWidth: 2, pointRadius: 4, pointHoverRadius: 9 },
         {
           label: 'Dept Avg', data: kf.map(k => {
             const peers = ENRICHED.filter(x => x.dept === s.dept && x.id !== s.id);
             return parseFloat((peers.reduce((a, x) => a + x.kpi[k], 0) / peers.length).toFixed(1));
-          }), borderColor: 'rgba(191,0,255,0.6)', backgroundColor: 'rgba(191,0,255,0.06)', pointBackgroundColor: '#bf00ff', borderWidth: 1.5, pointRadius: 3, borderDash: [5, 3]
+          }), borderColor: 'rgba(191,0,255,0.6)', backgroundColor: 'rgba(191,0,255,0.06)', pointBackgroundColor: '#bf00ff', pointHoverBackgroundColor: '#fff', pointHoverBorderColor: '#bf00ff', borderWidth: 1.5, pointRadius: 3, pointHoverRadius: 9, borderDash: [5, 3]
         },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      scales: { r: { grid: { color: 'rgba(0,245,255,0.1)' }, angleLines: { color: 'rgba(0,245,255,0.15)' }, ticks: { backdropColor: 'transparent', color: 'rgba(0,245,255,0.5)', font: { size: 9 } }, pointLabels: { color: 'rgba(120,180,220,.7)', font: { size: 10 } } } },
-      plugins: { legend: { labels: { color: 'rgba(120,180,220,.7)', font: { size: 11 } } } },
+      scales: { r: { grid: { color: 'rgba(0,245,255,0.1)' }, angleLines: { color: 'rgba(0,245,255,0.15)' }, ticks: { backdropColor: 'transparent', color: 'rgba(0,245,255,0.5)', font: { size: 9 } }, pointLabels: { color: 'rgba(120,180,220,1)', font: { size: 12, weight: 'bold' } } } },
+      animation: { duration: 400, easing: 'easeOutQuart' },
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { labels: { color: 'rgba(120,180,220,.7)', font: { size: 11 } } },
+        tooltip: {
+          backgroundColor: 'rgba(17, 24, 39, 0.95)',
+          titleFont: { size: 15, family: "'Inter', sans-serif", weight: 'bold' },
+          bodyFont: { size: 14, family: "'Inter', sans-serif" },
+          padding: 14,
+          cornerRadius: 10,
+          borderColor: '#00f5ff',
+          borderWidth: 1,
+          callbacks: {
+            title: function (tooltipItems) { return tooltipItems[0].label + " Statistics"; },
+            label: function (context) { return `${context.dataset.label}: ${context.parsed.r}`; },
+            afterBody: function (tooltipItems) {
+              const category = tooltipItems[0].label;
+              const cmap = {
+                'Internships': 'internships', 'Certs': 'certifications', 'Hackathons': 'hackathons',
+                'Publications': 'publications', 'Workshops': 'workshops', 'Projects': 'projects',
+                'Club': 'club_activities', 'Ind. Visits': 'industrial_visits'
+              };
+              const fieldName = cmap[category];
+              if (!fieldName) return '';
+
+              const participated = ENRICHED.filter(x => x.kpi[fieldName] > 0).length;
+              const winners = ENRICHED.filter(x => x.kpi[fieldName] >= 3).length;
+
+              return `\n👥 Attended: ${participated} Students\n🏆 Prize Winners: ${winners} Students`;
+            }
+          }
+        }
+      },
     }
   });
 
@@ -1550,7 +1709,9 @@ document.getElementById('certificateUploadForm')?.addEventListener('submit', (e)
       const labels = ['Internships', 'Certs', 'Hackathons', 'Publications', 'Workshops', 'Projects', 'Club', 'Ind. Visits', 'Courses'];
       const myVals = fields.map(f => studentInfo.kpi[f] || 0);
 
-      let chartStatus = Chart.getChart('studentRadarChart');
+      // Resolve chart update instance safely
+      const chartCtx = document.getElementById('studentRadarChart');
+      let chartStatus = Chart.getChart(chartCtx);
       if (chartStatus != undefined) {
         chartStatus.destroy();
       }

@@ -793,7 +793,12 @@
         const match = validCreds.find(c => c.email === email && c.password === password && c.role === role);
 
         if (match) {
-          localStorage.setItem('kpi_user', JSON.stringify({ email, role, name: getRoleName(role, email) }));
+          const userData = { email, role, name: getRoleName(role, email) };
+          localStorage.setItem('kpi_user', JSON.stringify(userData));
+          // Create a mock JWT token for the backend API to parse
+          const mockJwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + btoa(JSON.stringify(userData)) + ".mocksignature";
+          localStorage.setItem('kpi_token', mockJwt);
+
           showToast('Authentication successful! Redirecting...', 'success');
           setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
         } else {

@@ -322,6 +322,63 @@
             border-radius: 50%;
             box-shadow: 0 0 6px var(--neon-pink);
             animation: neonPulse 1.5s infinite;
+            display: none;
+            /* hidden by default until populated by JS */
+        }
+
+        .notif-wrapper {
+            position: relative;
+        }
+
+        .notif-dropdown {
+            position: absolute;
+            top: 48px;
+            right: 0;
+            width: 320px;
+            max-height: 400px;
+            background: rgba(5, 13, 21, 0.95);
+            border: 1px solid var(--neon-cyan);
+            border-radius: var(--radius-md);
+            box-shadow: 0 5px 20px rgba(0, 245, 255, 0.2);
+            z-index: 9999;
+            backdrop-filter: blur(10px);
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .notif-dropdown.active {
+            display: flex;
+        }
+
+        .notif-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(0, 245, 255, 0.1);
+            transition: background 0.2s;
+        }
+
+        .notif-item:last-child {
+            border-bottom: none;
+        }
+
+        .notif-item:hover {
+            background: rgba(0, 245, 255, 0.05);
+        }
+
+        .notif-item-title {
+            font-size: 0.85rem;
+            color: var(--neon-cyan);
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .notif-item-message {
+            font-size: 0.8rem;
+            color: rgba(120, 180, 220, 0.9);
+            line-height: 1.4;
         }
 
         /* ── CONTENT AREA ── */
@@ -905,10 +962,57 @@
         }
 
         /* ── FLOATING AI AGENT ── */
-        .ai-floating-icon {
+        .ai-floating-wrapper {
             position: fixed;
-            left: 20px;
-            bottom: 20px;
+            right: 50px;
+            bottom: 50px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 9999;
+        }
+
+        .ai-tooltip {
+            background: rgba(0, 245, 255, 0.1);
+            border: 1px solid var(--neon-cyan);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: #fff;
+            font-size: 0.85rem;
+            font-family: var(--font-display);
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 15px rgba(0, 245, 255, 0.2);
+            animation: bounceTooltip 2s infinite ease-in-out;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            position: relative;
+        }
+
+        .ai-tooltip::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-width: 6px 0 6px 6px;
+            border-style: solid;
+            border-color: transparent transparent transparent var(--neon-cyan);
+        }
+
+        @keyframes bounceTooltip {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .ai-floating-icon {
             width: 60px;
             height: 60px;
             background: linear-gradient(135deg, var(--neon-purple), var(--neon-cyan));
@@ -916,10 +1020,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
             cursor: pointer;
             box-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
-            z-index: 9999;
             transition: transform 0.2s, box-shadow 0.2s;
             user-select: none;
             touch-action: none;
@@ -932,8 +1034,8 @@
 
         .ai-floating-popup {
             position: fixed;
-            left: 90px;
-            bottom: 20px;
+            right: 50px;
+            bottom: 120px;
             width: 350px;
             height: 500px;
             background: rgba(5, 13, 21, 0.95);
@@ -946,7 +1048,7 @@
             overflow: hidden;
             backdrop-filter: blur(20px);
             animation: slideUp 0.3s ease-out;
-            transform-origin: bottom left;
+            transform-origin: bottom right;
         }
 
         .ai-floating-popup.active {
@@ -1099,7 +1201,15 @@
                     <span class="search-icon">🔍</span>
                     <input type="text" placeholder="Search students..." id="globalSearch">
                 </div>
-                <button class="notif-btn">🔔<span class="notif-dot"></span></button>
+                <div class="notif-wrapper">
+                    <button class="notif-btn" id="notifBellBtn">🔔<span class="notif-dot" id="notifDot"></span></button>
+                    <div class="notif-dropdown" id="notifDropdown">
+                        <div style="padding: 12px; text-align: center; color: rgba(120, 180, 220, 0.7); font-size: 0.85rem;"
+                            id="notifLoading">
+                            Loading AI insights...
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -1756,7 +1866,19 @@
     </div>
 
     <!-- ── FLOATING AI AGENT ── -->
-    <div class="ai-floating-icon" id="aiFloatingIcon" title="AI Assistant">🤖</div>
+    <div class="ai-floating-wrapper">
+        <div class="ai-tooltip" id="aiTooltip">Hi! Need AI insights? ✨</div>
+        <div class="ai-floating-icon" id="aiFloatingIcon" title="AI Assistant">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="10" rx="2" ry="2"></rect>
+                <circle cx="12" cy="5" r="2"></circle>
+                <path d="M12 7v4"></path>
+                <line x1="8" y1="16" x2="8" y2="16"></line>
+                <line x1="16" y1="16" x2="16" y2="16"></line>
+            </svg>
+        </div>
+    </div>
 
     <div class="ai-floating-popup" id="aiFloatingPopup">
         <div class="chat-header">
@@ -1792,98 +1914,21 @@
         const aiIcon = document.getElementById('aiFloatingIcon');
         const aiPopup = document.getElementById('aiFloatingPopup');
 
-        let isDragging = false;
-        let dragStartX, dragStartY;
-        let iconStartX, iconStartY;
+        const aiTooltip = document.getElementById('aiTooltip');
 
-        // Toggle visibility with click (with simple drag prevention logic)
-        let clickStart = 0;
-
-        aiIcon.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-
-            const rect = aiIcon.getBoundingClientRect();
-            iconStartX = rect.left;
-            iconStartY = rect.top;
-
-            clickStart = Date.now();
-            aiIcon.style.transition = 'none'; // remove transition for smooth drag
+        aiIcon.addEventListener('click', () => {
+            toggleAIPopup();
         });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-
-            const dx = e.clientX - dragStartX;
-            const dy = e.clientY - dragStartY;
-
-            // Constrain left position
-            let newX = iconStartX + dx;
-            let newY = iconStartY + dy;
-
-            const maxX = window.innerWidth - aiIcon.offsetWidth;
-            const maxY = window.innerHeight - aiIcon.offsetHeight;
-
-            // Ensure within bounds
-            newX = Math.max(0, Math.min(newX, maxX));
-            newY = Math.max(0, Math.min(newY, maxY));
-
-            // Set left and top directly, clear bottom/right values that could conflict
-            aiIcon.style.left = `${newX}px`;
-            aiIcon.style.top = `${newY}px`;
-            aiIcon.style.bottom = 'auto';
-            aiIcon.style.right = 'auto';
-
-            // Reposition popup smoothly based on icon position
-            repositionPopup(newX, newY);
-        });
-
-        document.addEventListener('mouseup', (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-            aiIcon.style.transition = 'transform 0.2s, box-shadow 0.2s'; // restore transition
-
-            const dragTime = Date.now() - clickStart;
-            // Differentiate drag vs click (if very brief)
-            if (dragTime < 200) {
-                toggleAIPopup();
-            }
-        });
-
-        function repositionPopup(iconX, iconY) {
-            // Put popup relative to icon if possible, staying on screen
-            const padding = 20;
-            const popupW = 350;
-            const popupH = 500;
-
-            // Try to place to the right, else to the left
-            let popX = iconX + 80;
-            if (popX + popupW > window.innerWidth) {
-                popX = iconX - popupW - padding;
-            }
-
-            // Align bottom, but stay on screen
-            let popY = iconY - popupH + 60;
-            if (popY < 0) {
-                popY = padding;
-            }
-
-            // If on mobile (less than 640), keep default styles which rely on bottom/left via media queries
-            if (window.innerWidth > 640) {
-                aiPopup.style.left = `${Math.max(padding, popX)}px`;
-                aiPopup.style.top = `${Math.max(padding, popY)}px`;
-                aiPopup.style.bottom = 'auto';
-            }
-        }
 
         function toggleAIPopup() {
             aiPopup.classList.toggle('active');
 
-            // Update positioning immediately if opened
             if (aiPopup.classList.contains('active')) {
-                const rect = aiIcon.getBoundingClientRect();
-                repositionPopup(rect.left, rect.top);
+                // Hide tooltip when opened
+                if (aiTooltip) {
+                    aiTooltip.style.opacity = '0';
+                    setTimeout(() => aiTooltip.style.display = 'none', 300);
+                }
                 document.getElementById('floatingChatInput').focus();
             }
         }
@@ -1936,6 +1981,88 @@
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 });
         }
+
+        // ==========================================
+        // AI Notifications Engine
+        // ==========================================
+        const notifBellBtn = document.getElementById('notifBellBtn');
+        const notifDropdown = document.getElementById('notifDropdown');
+        const notifDot = document.getElementById('notifDot');
+        let notificationsLoaded = false;
+
+        if (notifBellBtn) {
+            notifBellBtn.addEventListener('click', () => {
+                notifDropdown.classList.toggle('active');
+
+                // Hide the red dot once clicked
+                if (notifDot) {
+                    notifDot.style.display = 'none';
+                }
+
+                if (notifDropdown.classList.contains('active') && !notificationsLoaded) {
+                    fetchAINotifications();
+                }
+            });
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (notifDropdown && notifDropdown.classList.contains('active') && !e.target.closest('.notif-wrapper')) {
+                notifDropdown.classList.remove('active');
+            }
+        });
+
+        async function fetchAINotifications() {
+            const loadingHtml = `<div style="padding: 12px; text-align: center; color: rgba(120, 180, 220, 0.7); font-size: 0.85rem;">
+                <div class="ai-status" style="justify-content:center; margin-bottom:8px;">
+                    <div class="ai-dot"></div><div class="ai-dot" style="animation-delay:0.2s"></div><div class="ai-dot" style="animation-delay:0.4s"></div>
+                </div>
+                Generating personalized AI insights...
+            </div>`;
+            notifDropdown.innerHTML = loadingHtml;
+
+            const storedUserStr = localStorage.getItem('kpi_user');
+            if (!storedUserStr) {
+                notifDropdown.innerHTML = `<div style="padding:16px;text-align:center;color:#ff006e;font-size:0.85rem">Authentication error. Please login again.</div>`;
+                return;
+            }
+
+            try {
+                const storedUser = JSON.parse(storedUserStr);
+                const userId = storedUser.email.split('@')[0];
+                const targetUrl = `http://localhost:8000/api/notifications?user_id=${encodeURIComponent(userId)}&role=${encodeURIComponent(storedUser.role)}`;
+
+                const response = await fetch(targetUrl);
+
+                if (!response.ok) throw new Error('API failed to generate insights');
+
+                const data = await response.json();
+
+                if (!data || data.length === 0) {
+                    notifDropdown.innerHTML = `<div style="padding:16px;text-align:center;color:var(--neon-cyan);font-size:0.85rem">No new notifications at this time.</div>`;
+                } else {
+                    notifDropdown.innerHTML = data.map(notif => `
+                        <div class="notif-item">
+                            <div class="notif-item-title">✨ ${notif.title}</div>
+                            <div class="notif-item-message">${notif.message}</div>
+                        </div>
+                    `).join('');
+                }
+                notificationsLoaded = true;
+
+            } catch (error) {
+                console.error("Notification Generation Error:", error);
+                notifDropdown.innerHTML = `<div style="padding:16px;text-align:center;color:#ff006e;font-size:0.85rem">Failed to connect to Neural Engine. Please try again.</div>`;
+            }
+        }
+
+        // Initial check to show the red dot if user is not admin
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = JSON.parse(localStorage.getItem('kpi_user'));
+            if (user && user.role !== 'admin' && notifDot) {
+                notifDot.style.display = 'block';
+            }
+        });
     </script>
 
     <script src="js/neon-app.js"></script>
