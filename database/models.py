@@ -259,3 +259,25 @@ class PerformanceHistory(Base):
     
     def __repr__(self):
         return f"<PerformanceHistory(student_id='{self.student_id}', score={self.kpi_score}, date={self.timestamp})>"
+
+
+class EventCache(Base):
+    """
+    Cache for SerpApi Google Events results to minimize API calls and respect Free Tier limits.
+    
+    Attributes:
+        id (int): Unique identifier
+        query (str): The search query used for SerpApi
+        event_data (JSON): The JSON serialized list of events returned
+        last_fetched (datetime): Timestamp of the API call
+    """
+    
+    __tablename__ = "event_cache"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    query = Column(String, unique=True, index=True, nullable=False)
+    event_data = Column(JSON, nullable=False)
+    last_fetched = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<EventCache(query='{self.query}', updated='{self.last_fetched}')>"

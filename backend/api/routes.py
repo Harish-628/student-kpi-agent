@@ -12,9 +12,11 @@ from typing import List, Optional
 import csv
 import io
 import json
+import requests
+import os
 
 from database.database import get_db
-from database.models import Student, KPI, Score, User, Milestone, PerformanceHistory
+from database.models import Student, KPI, Score, User, Milestone, PerformanceHistory, EventCache
 from backend.schemas import (
     StudentCreate, StudentUpdate, StudentResponse,
     KPIAdd, KPIUpdate, KPIResponse,
@@ -37,6 +39,7 @@ class ChatQueryRequest(BaseModel):
     query: str
     user_id: str
     role: str
+    image: Optional[str] = None
 
 # ============ Mock User Database (Replace with real DB after setup) ============
 MOCK_USERS = {}
@@ -699,6 +702,10 @@ def get_performance_trends(
 
 # ============ AI Intelligence Endpoints ============
 
+class IdeaEnhancerRequest(BaseModel):
+    idea: str
+    user_id: str
+
 @router.post("/chatbot/query")
 def process_chatbot_query(
     request: ChatQueryRequest,
@@ -729,6 +736,20 @@ def process_chatbot_query(
         "response": final_state.get("response", "The Neural Agent failed to generate a response.")
     }
 
+@router.post("/idea-enhancer")
+def enhance_student_idea(
+    request: IdeaEnhancerRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Critiques a student's project idea or blog post draft based on the Idea Enhancer logic.
+    """
+    if not request.idea or len(request.idea.strip()) < 5:
+        raise HTTPException(status_code=400, detail="Idea is too short to analyze.")
+        
+    critique = recommendation_engine.enhance_idea(request.idea)
+    return {"critique": critique}
+
 @router.get("/notifications")
 def get_user_notifications(user_id: str, role: str):
     """
@@ -751,6 +772,98 @@ def get_user_notifications(user_id: str, role: str):
             "message": f"Could not generate insights: {str(e)}"
         }]
 
+@router.get("/events")
+def get_upcoming_events(user_id: str, db: Session = Depends(get_db)):
+    """
+    Fetches upcoming college events from SerpApi based on the student's weakest KPI area.
+    Results are cached in the database for 24 hours to minimize API usage.
+    """
+    if user_id == "admin":
+        return {"events": [], "source": "admin", "query": ""}
+        
+    student = db.query(Student).filter(Student.student_id == user_id).first()
+    search_query = "upcoming college tech events"
+    
+    if student and student.kpis:
+        dept_name = student.department
+        kpi = student.kpis
+        areas = {
+            "hackathons": kpi.hackathons,
+            "workshops": kpi.workshops,
+            "certifications": kpi.certifications,
+            "internships": kpi.internships
+        }
+        weakest = min(areas, key=areas.get)
+        search_query = f"upcoming college {weakest} {dept_name}"
+    
+    # Check Cache
+    cached = db.query(EventCache).filter(EventCache.query == search_query).first()
+    if cached:
+        # Check if cache is < 24 hours old
+        if datetime.utcnow() - cached.last_fetched < timedelta(hours=24):
+            return {"events": cached.event_data, "source": "cache", "query": search_query}
+            
+    # Fetch from SerpApi
+    api_key = os.getenv("SERPAPI_API_KEY")
+    if not api_key:
+        if cached:
+             return {"events": cached.event_data, "source": "stale_cache", "query": search_query}
+        return {"events": [], "source": "error", "query": search_query, "error": "No SERPAPI_API_KEY"}
+        
+    try:
+        params = {
+            "engine": "google_events",
+            "q": search_query,
+            "api_key": api_key,
+            "hl": "en",
+            "gl": "us"
+        }
+        res = requests.get("https://serpapi.com/search.json", params=params)
+        res.raise_for_status()
+        data = res.json()
+        
+        events_list = data.get("events_results", [])
+        
+        # Fallback if SerpApi returns 0 events for the specific query/location
+        if not events_list:
+            events_list = [
+                {
+                    "title": "Global Tech Summit 2026",
+                    "date": {"when": "Next Friday"},
+                    "link": "https://example.com/tech-summit",
+                    "thumbnail": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&q=80"
+                },
+                {
+                    "title": "Regional AI Hackathon",
+                    "date": {"when": "Next Month"},
+                    "link": "https://example.com/ai-hack",
+                    "thumbnail": "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=300&q=80"
+                },
+                {
+                    "title": "Innovators Career Fair",
+                    "date": {"when": "In 2 Weeks"},
+                    "link": "https://example.com/career-fair",
+                    "thumbnail": "https://images.unsplash.com/photo-1556761175-5973dc0f32b7?w=300&q=80"
+                }
+            ]
+        
+        # Save to Cache
+        if cached:
+            cached.event_data = events_list
+            cached.last_fetched = datetime.utcnow()
+        else:
+            new_cache = EventCache(query=search_query, event_data=events_list)
+            db.add(new_cache)
+        db.commit()
+        
+        return {"events": events_list, "source": "api", "query": search_query}
+        
+    except Exception as e:
+        print(f"SerpApi Error: {e}")
+        if cached:
+             return {"events": cached.event_data, "source": "stale_cache", "query": search_query}
+        return {"events": [], "source": "error", "query": search_query, "error": str(e)}
+
 # ============ Health Check ============
 
 @router.get("/")
@@ -761,3 +874,4 @@ def health_check():
         "message": "Student KPI API is running!",
         "timestamp": datetime.utcnow().isoformat()
     }
+

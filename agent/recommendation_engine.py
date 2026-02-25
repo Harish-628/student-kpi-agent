@@ -4,6 +4,7 @@ from database.models import Student, KPI, Score
 from database.database import get_db
 import os
 import json
+import time
 
 class RecommendationEngine:
     def __init__(self):
@@ -17,7 +18,7 @@ class RecommendationEngine:
         self.student_prompt = PromptTemplate(
             input_variables=["student_name", "department", "kpi_score", "career_readiness", "kpi_breakdown"],
             template="""You are an expert AI academic and career advisor.
-You are generating personalized notification alerts for {student_name}, a student in the {department} department.
+You are generating personalized notification alerts and recommendations for {student_name}, a student in the {department} department.
 
 Their current KPI Score is {kpi_score}/100.
 Their Career Readiness assessment is: {career_readiness}.
@@ -26,18 +27,19 @@ Here is the breakdown of their current KPI achievements:
 {kpi_breakdown}
 
 Analyze the student's activity specifically focusing on:
-1. Their underlying domain/interests based on where they score high (e.g., if they do many projects but few publications, they lean towards practical dev).
-2. Their Hackathon metrics. If it's low or 0, explicitly tell them mistakes they made by skipping hackathons or how to start.
-3. Their Publications/Blogs metrics. Point out how to improve or praise them.
-4. General advice tailored closely to their specific high/low points.
+1. **Blog Topics & Content**: Suggest highly specific blog topics they should write about based on their highest-performing domains (e.g., if they have 3 publications and 0 projects, suggest writing about academic research methodologies).
+2. **Hackathon Ideas & Mistakes**: Analyze their Hackathon metrics. If it's low or 0, explicitly tell them mistakes they made by skipping hackathons, and give them 1 specific beginner hackathon project idea to build.
+3. **Upcoming Events**: Invent 1 realistic "upcoming college event" (e.g., "Annual AI Symposium 2026") that directly matches their weak points so they can improve.
+4. **General Advice**: Advice tailored closely to their specific high/low points.
 
-You MUST respond strictly with a valid JSON array of exactly 3 or 4 notification objects. 
-Each object must have a "title" string and a "message" string. DO NOT use markdown formatting outside the JSON array.
+You MUST respond strictly with a valid JSON array of exactly 4 notification objects. 
+Each object must have a "title" string and a "message" string. 
+CRITICAL: The "message" string MUST be composed of 2-3 short, punchy bullet points formatted with the '-' character. Be highly concise. Do not write paragraphs.
 
 Example output format:
 [
-  {{"title": "Hackathon Strategy", "message": "You haven't participated in any hackathons yet! This is a missed opportunity to network and test your practical skills."}},
-  {{"title": "Domain Insight: Practical Dev", "message": "Your high project count shows great practical capability. Try to write a blog post documenting your best project."}}
+  {{"title": "Hackathon Strategy", "message": "- You haven't participated in any hackathons!\n- Mistake: Skipping practical networking.\n- Idea: Build a simple CRUD app next weekend."}},
+  {{"title": "Recommended Blog Topic", "message": "- Your 3 projects show practical capability.\n- Action: Write a blog post titled 'Building My First Robust Full-Stack Project'."}}
 ]
 """
         )
@@ -53,15 +55,51 @@ Average Department KPI Score: {avg_kpi}/100
 Aggregated Department Metrics:
 {metrics_breakdown}
 
-Analyze these aggregate metrics and generate strategic insights for the {role}:
-1. Identify areas where the department is excelling (e.g., high average projects or internships).
-2. Identify critical gaps where students are underperforming (e.g., low hackathon participation or publications) and suggest how the {role} can encourage them.
-3. Provide one actionable strategy to boost overall student career readiness.
+Analyze these aggregate metrics and generate strategic insights for the {role} specifically focusing on:
+1. **Improving Performance**: Actionable recommendations for improving the department's weakest student performance areas.
+2. **Strengths & Weaknesses**: Explicitly state the strong parts and weak parts of the students in this department.
+3. **Active Participation**: Highlight where students are actively participating the most and how to leverage that momentum.
 
-You MUST respond strictly with a valid JSON array of exactly 3 or 4 notification objects. 
-Each object must have a "title" string and a "message" string. DO NOT use markdown formatting outside the JSON array.
+You MUST respond strictly with a valid JSON array of exactly 4 notification objects. 
+Each object must have a "title" string and a "message" string. 
+CRITICAL: The "message" string MUST be composed of 2-3 short, punchy bullet points formatted with the '-' character. Be highly concise. Do not write paragraphs.
 """
         )
+
+        self.idea_enhancer_prompt = PromptTemplate(
+            input_variables=["student_idea"],
+            template="""You are an expert AI mentor and technical editor. Evaluate the following idea or blog content submitted by a student.
+
+Student Submission:
+"{student_idea}"
+
+1. Critique the idea/content for clarity, impact, and technical feasibility.
+2. Provide 3 specific, actionable recommendations on how to dramatically improve it.
+3. Suggest an eye-catching alternative title.
+
+Format your response as a deeply helpful, markdown-formatted critique. Use bolding, bullet points, and headers (##) to make it highly readable. Do not output JSON.
+"""
+        )
+
+    def enhance_idea(self, idea_text: str) -> str:
+        """
+        Critiques a student's idea or blog content.
+        """
+        chain = self.idea_enhancer_prompt | self.llm
+        
+        # Add a retry loop for SSL EOF errors
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = chain.invoke({"student_idea": idea_text})
+                return response.content.strip()
+            except Exception as e:
+                err_str = str(e)
+                if "SSL" in err_str or "EOF" in err_str or "protocol" in err_str:
+                    if attempt < max_retries - 1:
+                        time.sleep(1)
+                        continue
+                return f"**Error generating critique:** {err_str}\n\nOur AI engine is currently experiencing connectivity issues. Please try again in a moment."
 
     def generate_kpi_notifications(self, user_id: str, role: str = "student"):
         """
@@ -129,21 +167,42 @@ Each object must have a "title" string and a "message" string. DO NOT use markdo
                 """
 
                 chain = self.student_prompt | self.llm
-                response = chain.invoke({
-                    "student_name": student.name,
-                    "department": student.department,
-                    "kpi_score": kpi_score_val,
-                    "career_readiness": readiness_val,
-                    "kpi_breakdown": kpi_breakdown_text
-                })
+                
+                # Add retry loop for student generation
+                response = None
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
+                        response = chain.invoke({
+                            "student_name": student.name,
+                            "department": student.department,
+                            "kpi_score": kpi_score_val,
+                            "career_readiness": readiness_val,
+                            "kpi_breakdown": kpi_breakdown_text
+                        })
+                        break
+                    except Exception as e:
+                        err_str = str(e)
+                        if "SSL" in err_str or "EOF" in err_str or "protocol" in err_str:
+                            if attempt < max_retries - 1:
+                                time.sleep(1)
+                                continue
+                        return [{"title": "Connection Interrupted", "message": f"Our AI engine experienced a temporary drop: {err_str}. Please refresh to try again."}]
             
+            if not response:
+                return [{"title": "AI Offline", "message": "Failed to generate recommendations after multiple attempts."}]
+                
             raw = response.content.strip()
             
-            # Remove any markdown wrapping the LLM might mistakenly add
-            if raw.startswith("```json"):
-                raw = raw[7:]
-            if raw.endswith("```"):
-                raw = raw[:-3]
+            import re
+            
+            # Robust JSON array extraction to handle unpredictable LLM markdown wrapping
+            json_match = re.search(r'\[.*\]', raw, re.DOTALL)
+            if json_match:
+                raw = json_match.group(0)
+            else:
+                # If no array brackets are found, try fallback standard cleanup
+                raw = raw.replace("```json", "").replace("```", "").strip()
             
             try:
                 notifications = json.loads(raw)

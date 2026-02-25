@@ -10,6 +10,7 @@ class AgentState(Dict[str, Any]):
     user_email: str
     context: str
     response: str
+    image: str
 
 def parse_query_node(state: AgentState):
     """Initial node just normalizes the input state."""
@@ -35,7 +36,8 @@ def generate_response_node(state: AgentState):
         query=state["query"],
         user_role=state["user_role"],
         user_email=state["user_email"],
-        context=state["context"]
+        context=state["context"],
+        image=state.get("image")
     )
     state["response"] = response
     print(f"[LangGraph] Generated response length: {len(response)}")

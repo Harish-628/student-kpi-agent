@@ -156,7 +156,8 @@ function switchSection(name) {
   if (sec) sec.classList.add('active');
   document.getElementById('pageTitle').textContent = ({
     dashboard: 'DASHBOARD', students: 'STUDENTS', faculty: 'FACULTY', hods: 'HOD DATABASE', kpi: 'KPI TRACKER',
-    'fac-kpi': 'FACULTY KPI', 'hod-kpi': 'HOD KPI', 'hod-profile': 'PERSONAL INFO', 'fac-profile': 'PERSONAL INFO', leaderboard: 'LEADERBOARD', ai: 'AI AGENT', analytics: 'ANALYTICS'
+    'fac-kpi': 'FACULTY KPI', 'hod-kpi': 'HOD KPI', 'hod-profile': 'PERSONAL INFO', 'fac-profile': 'PERSONAL INFO', leaderboard: 'LEADERBOARD', ai: 'AI AGENT', analytics: 'ANALYTICS',
+    recommendations: 'AI RECOMMENDATIONS', 'idea-enhancer': 'IDEA ENHANCER'
   })[name] || name.toUpperCase();
   currentSection = name;
   if (name === 'leaderboard') renderLeaderboard();
@@ -166,6 +167,7 @@ function switchSection(name) {
   if (name === 'hod-profile') renderHODProfile();
   if (name === 'fac-profile') renderFacProfile();
   if (name === 'hod-kpi') initAdminHODKPI();
+  if (name === 'recommendations') loadRecommendationsView();
 }
 
 // Sidebar collapse
@@ -190,6 +192,11 @@ if (storedUser && storedUser.role === 'hod') {
 if (storedUser && storedUser.role === 'faculty') {
   const navFacProfile = document.getElementById('navFacProfileBtn');
   if (navFacProfile) navFacProfile.style.display = 'flex';
+}
+// Idea Enhancer permission (Students & Faculty & HOD)
+if (storedUser) {
+  const navIdea = document.getElementById('navIdeaEnhancerBtn');
+  if (navIdea) navIdea.style.display = 'flex';
 }
 // Admin exclusively viewing HOD DB and HOD KPIs
 if (storedUser && storedUser.role === 'admin') {
@@ -1656,6 +1663,56 @@ document.getElementById('certificateUploadForm')?.addEventListener('submit', (e)
     return; // Stop here for HOD
   }
 
+  // Faculty logic branch
+  if (userInfo.role === 'faculty' && window.facKpis) {
+    const btn = document.getElementById('uploadCertBtn');
+    btn.textContent = 'Uploading...';
+    btn.classList.add('loading');
+
+    // Render file preview data URL to store in registry so we can view it later
+    const file = fileInput.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (!window.uploadedFilesRegistry[category]) {
+          window.uploadedFilesRegistry[category] = [];
+        }
+        window.uploadedFilesRegistry[category].push({
+          url: e.target.result,
+          type: file.type
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    setTimeout(() => {
+      // Find the KPI and increment
+      const kpi = window.facKpis.find(k => k.id === category);
+      if (kpi) kpi.val += 1;
+
+      // Re-render Faculty profile to show update
+      if (typeof renderFacProfile === 'function' && document.getElementById('section-fac-profile').classList.contains('active')) {
+        renderFacProfile();
+      }
+
+      // Wrap up
+      btn.textContent = 'Upload Document';
+      btn.classList.remove('loading');
+      e.target.reset();
+
+      const successMsg = document.getElementById('uploadSuccessMsg');
+      successMsg.style.display = 'flex';
+      setTimeout(() => {
+        successMsg.style.display = 'none';
+        closeUploadModal();
+      }, 2000);
+
+      showToast(`Successfully uploaded and verified ${category.replace('_', ' ')}! (+ KPI points)`, 'success');
+    }, 1000);
+
+    return; // Stop here for Faculty
+  }
+
   // Student logic branch
   if (userInfo.role !== 'student') return;
 
@@ -1893,6 +1950,283 @@ async function uploadStudentCSV(event) {
     btn.innerHTML = ogText;
     btn.disabled = false;
     event.target.value = ''; // Reset file state
+  }
+}
+
+// ── RECOMMENDATIONS VIEW ─────────────────────────
+async function loadRecommendationsView() {
+  const container = document.getElementById('recommendationsContainer');
+  const storedUser = JSON.parse(localStorage.getItem('kpi_user') || '{}');
+  const email = storedUser.email;
+  const role = storedUser.role;
+
+  if (!email || !role) {
+    container.innerHTML = '<div style="color:var(--neon-pink); padding: 20px;">Cannot load insights. Please login again.</div>';
+    return;
+  }
+
+  // Pre-fetch clear & loading animation
+  container.innerHTML = `
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; gap:20px; color:rgba(120,180,220,0.7); height:300px;">
+      <div style="width:40px; height:40px; border:3px solid var(--neon-cyan); border-radius:50%; border-top-color:transparent; animation:spin 1s linear infinite;"></div>
+      <div style="font-family:var(--font-mono); letter-spacing:1px; animation:neonPulse 2s infinite;">ANALYZING KPI METRICS...</div>
+    </div>
+  `;
+
+  try {
+    // Determine the ID to send. For students it's everything before @. For faculty/HOD it's the email prefix.
+    let userId = email;
+    if (role === 'student' && email.includes('@')) {
+      userId = email.split('@')[0];
+    }
+
+    // Trigger parallel fetch for SerpApi Events Marquee
+    loadEventsView(userId);
+
+    const token = localStorage.getItem('kpi_token') || '';
+    const response = await fetch(`http://localhost:8000/api/notifications?user_id=${userId}&role=${role}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    // Check if the response is actually OK
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = '<div style="color:var(--neon-orange); padding:20px;">No insights available at this time.</div>';
+      return;
+    }
+
+    let html = '';
+
+    // Specific icon mapping array based on keywords in title
+    const iconMap = {
+      'improve': 'trending_up',
+      'weak': 'warning',
+      'strong': 'star',
+      'blog': 'edit',
+      'hackathon': 'code',
+      'event': 'event',
+      'mistake': 'error_outline',
+      'strategy': 'lightbulb'
+    };
+
+    function getIcon(title) {
+      let t = title.toLowerCase();
+      for (let key in iconMap) {
+        if (t.includes(key)) return iconMap[key];
+      }
+      return 'lightbulb_outline'; // default
+    }
+
+    data.forEach((item, index) => {
+      // Add a slight stagger to the animation via inline style
+      const delay = index * 0.15;
+
+      const icon = getIcon(item.title);
+      // We will mock the material icons with emojis since we don't have the font loaded, 
+      // but keeping the logic in case we want to swap out.
+      const emojiMap = {
+        'trending_up': '📈', 'warning': '⚠️', 'star': '⭐', 'edit': '✍️', 'code': '💻',
+        'event': '📅', 'error_outline': '🚨', 'lightbulb': '💡', 'lightbulb_outline': '✨'
+      };
+
+      // Format message if it contains dashed bullet points from the AI Engine
+      let formattedMessage = item.message
+        .replace(/(?:^|\n)-\s*(.*?)(?=\n|$)/g, '<li style="margin-left:22px; margin-bottom:6px; list-style-type:disc;">$1</li>')
+        .replace(/\n/g, '<br>');
+
+      html += `
+        <div class="insight-item" style="display:flex; flex-direction:column; gap:12px; padding:20px; animation: fadeInUp 0.4s ease forwards; animation-delay: ${delay}s; opacity:0; transform:translateY(10px); background:rgba(0,245,255,0.02); border:1px solid rgba(0,245,255,0.1); border-radius:var(--radius-md);">
+          <div style="font-size:2rem; flex-shrink:0; background:rgba(0,245,255,0.1); width:50px; height:50px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+             ${emojiMap[icon] || '✨'}
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column;">
+            <h3 style="color:var(--neon-cyan); margin:0 0 8px 0; font-size:1.1rem;">${item.title}</h3>
+            <div style="color:rgba(120,180,220,0.9); margin:0; line-height:1.6; font-size:0.95rem;">${formattedMessage}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    // Replace the loading animation with the actual content using a horizontal css grid format
+    container.innerHTML = `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">${html}</div>`;
+
+  } catch (error) {
+    console.error("Fetch Error:", error);
+    container.innerHTML = `<div style="color:var(--neon-pink); padding: 20px;">Could not connect to the Neural Engine. Ensure the backend API is running.</div>`;
+  }
+}
+
+// Global variables to store attached file text for the AI
+window.ideaAttachmentText = "";
+
+async function handleIdeaFileUpload(event) {
+  const file = event.target.files[0];
+  const indicator = document.getElementById('ideaFileIndicator');
+  if (!file) {
+    if (indicator) indicator.style.display = 'none';
+    window.ideaAttachmentText = "";
+    return;
+  }
+
+  if (indicator) {
+    indicator.textContent = `Attached: ${file.name}`;
+    indicator.style.display = 'block';
+  }
+
+  // Very simple client-side text extraction for demo AI context
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    window.ideaAttachmentText = `\n\n[Attached File Content (${file.name})]:\n${e.target.result.substring(0, 5000)}`;
+  };
+  reader.readAsText(file);
+}
+
+// ── IDEA ENHANCER LOGIC ─────────────────────────────
+async function submitIdeaToEnhancer() {
+  const inputEl = document.getElementById('ideaInput');
+  const resultEl = document.getElementById('ideaEnhancerResult');
+  const btn = document.getElementById('enhanceIdeaBtn');
+  const storedUser = JSON.parse(localStorage.getItem('kpi_user') || '{}');
+
+  let ideaText = inputEl.value.trim();
+
+  // Append dynamically attached file text if present
+  if (window.ideaAttachmentText) {
+    ideaText += window.ideaAttachmentText;
+  }
+
+  if (ideaText.length < 5) {
+    showToast('Warning', 'Please type at least a few words describing your idea.');
+    return;
+  }
+
+  // Set loading state
+  const ogText = btn.innerHTML;
+  btn.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border:2px solid;border-radius:50%;border-top-color:transparent;animation:spin 1s linear infinite;"></span> Analyzing...`;
+  btn.disabled = true;
+
+  resultEl.innerHTML = `
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:15px; color:rgba(120,180,220,0.7);">
+      <div style="width:30px; height:30px; border:3px solid var(--neon-cyan); border-radius:50%; border-top-color:transparent; animation:spin 1s linear infinite;"></div>
+      <div style="font-family:var(--font-mono); font-size: 0.8rem; letter-spacing:1px; animation:neonPulse 2s infinite;">EVALUATING TECHNICAL FEASIBILITY...</div>
+    </div>
+  `;
+
+  try {
+    const token = localStorage.getItem('kpi_token') || '';
+    const userId = storedUser.email || 'student';
+
+    const response = await fetch('http://localhost:8000/api/idea-enhancer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ idea: ideaText, user_id: userId })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.detail || "Error communicating with AI");
+    }
+
+    // Basic markdown to HTML parsing for the specific requested JSON structure (bolding, headers, lists)
+    let formattedHTML = data.critique
+      .replace(/## (.*?)\n/g, '<h3 style="color:var(--neon-cyan); margin:16px 0 8px 0;">$1</h3>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#fff;">$1</strong>')
+      .replace(/\*(.*?)\n/g, '<li style="margin-left: 15px; margin-bottom: 6px;">$1</li>')
+      .replace(/\n\n/g, '<br><br>');
+
+    resultEl.innerHTML = `<div style="animation: fadeInUp 0.4s ease;">${formattedHTML}</div>`;
+
+  } catch (error) {
+    resultEl.innerHTML = `<div style="color:var(--neon-pink); text-align:center; padding-top:40px;">Failed to generate critique: ${error.message}</div>`;
+  } finally {
+    btn.innerHTML = ogText;
+    btn.disabled = false;
+  }
+}
+
+// ── EVENTS MARQUEE LOGIC ─────────────────────────────
+async function loadEventsView(userId) {
+  const container = document.getElementById('eventsContainer');
+  if (!container) return;
+
+  try {
+    const token = localStorage.getItem('kpi_token') || '';
+    const response = await fetch(`http://localhost:8000/api/events?user_id=${userId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!response.ok) throw new Error("API Error fetching events");
+
+    const data = await response.json();
+    const events = data.events || [];
+
+    if (events.length === 0) {
+      container.innerHTML = '<div style="color:var(--neon-orange); padding:20px; text-align:center;">No upcoming events currently found.</div>';
+      return;
+    }
+
+    // Build Marquee HTML
+    let cardsHtml = '';
+    events.forEach(ev => {
+      const title = ev.title || "College Event";
+      const date = ev.date?.when || "Upcoming";
+      const link = ev.link || "#";
+      const thumbnail = ev.thumbnail || "https://via.placeholder.com/150/000000/00f5ff?text=EVENT";
+
+      cardsHtml += `
+        <a href="${link}" target="_blank" style="text-decoration:none; display:flex; flex-direction:column; min-width:200px; width:200px; background:rgba(20,25,35,0.8); border:1px solid rgba(0,245,255,0.2); border-radius:12px; overflow:hidden; transition:transform 0.3s, box-shadow 0.3s; color:#fff; box-shadow: 0 4px 15px rgba(0,0,0,0.3);" onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 0 15px rgba(0,245,255,0.3)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.3)';">
+           <img src="${thumbnail}" style="width:100%; height:120px; object-fit:cover;" onerror="this.src='https://via.placeholder.com/150/000000/00f5ff?text=EVENT'">
+           <div style="padding:15px; display:flex; flex-direction:column; flex:1;">
+             <div style="color:var(--neon-cyan); font-size:0.75rem; font-family:var(--font-mono); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px;">${date}</div>
+             <div style="font-weight:600; font-size:0.95rem; line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; margin-bottom:10px;">${title}</div>
+             <div style="margin-top:auto; font-size:0.8rem; color:rgba(120,180,220,0.6); display:flex; align-items:center; gap:4px;">
+                <span>🔗</span> View Event
+             </div>
+           </div>
+        </a>
+      `;
+    });
+
+    // Duplicate the list of cards multiple times to ensure seamless infinite looping 
+    // moving from left to right requires -50% to 0%.
+    cardsHtml = cardsHtml + cardsHtml + cardsHtml;
+
+    container.innerHTML = `
+      <style>
+        @keyframes scrollEventsLeftRight {
+          0% { transform: translateX(-50%); }
+          100% { transform: translateX(0); }
+        }
+        .events-marquee-track {
+          display: flex;
+          gap: 20px;
+          width: max-content;
+          animation: scrollEventsLeftRight 40s linear infinite;
+          padding: 10px 0;
+        }
+        .events-marquee-track:hover {
+          animation-play-state: paused;
+        }
+      </style>
+      <div style="overflow:hidden; width:100%; height:100%; display:flex; align-items:center; position:absolute; left:0; right:0; top:0; bottom:0;">
+        <div class="events-marquee-track">
+          ${cardsHtml}
+        </div>
+      </div>
+    `;
+
+  } catch (error) {
+    container.innerHTML = '<div style="color:var(--neon-pink); padding: 20px; text-align:center;">Unable to fetch events.</div>';
+    console.error("Events Fetch Error:", error);
   }
 }
 

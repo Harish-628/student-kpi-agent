@@ -32,7 +32,7 @@ Here is relevant general context retrieved from the KPI system's database (if an
 Now, answer the User's Query.
 """
 
-    def generate_chat_response(self, query: str, user_role: str, user_email: str, context: str = "") -> str:
+    def generate_chat_response(self, query: str, user_role: str, user_email: str, context: str = "", image: str = None) -> str:
         """
         Generates an autonomous agentic chat response utilizing dynamic role-based tools.
         """
@@ -58,13 +58,38 @@ Now, answer the User's Query.
             context=context
         ))
         
-        human_msg = HumanMessage(content=query)
+        # Format HumanMessage to support image if provided
+        if image:
+            # Check if it has a data URL prefix and extract the base64 part
+            content_blocks = [{"type": "text", "text": query}]
+            
+            # Extract just the base64 part if formatted as data:image/png;base64,...
+            if "," in image:
+                b64_data = image.split(",", 1)[1]
+            else:
+                b64_data = image
+                
+            content_blocks.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/jpeg;base64,{b64_data}"}
+            })
+            human_msg = HumanMessage(content=content_blocks)
+        else:
+            human_msg = HumanMessage(content=query)
         
         # 4. Invoke the Graph
         response_state = agent.invoke({"messages": [sys_msg, human_msg]})
         
         # The agent's final answer is always the last AIMessage in the state
-        final_answer = response_state["messages"][-1].content
+        content = response_state["messages"][-1].content
+        if isinstance(content, list):
+            # Sometimes LangChain returns a list of blocks like [{'type': 'text', 'text': '...'}]
+            final_answer = " ".join([block.get("text", "") for block in content if isinstance(block, dict) and "text" in block])
+            if not final_answer:
+                final_answer = str(content)
+        else:
+            final_answer = str(content)
+            
         return final_answer
 
 
