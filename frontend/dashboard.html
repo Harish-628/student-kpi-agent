@@ -1016,8 +1016,8 @@
         }
 
         .ai-floating-icon {
-            width: 100px;
-            height: 100px;
+            width: 140px;
+            height: 140px;
             background: transparent;
             display: flex;
             align-items: center;
@@ -1037,7 +1037,7 @@
         .ai-floating-popup {
             position: fixed;
             right: 50px;
-            bottom: 160px;
+            bottom: 200px;
             width: 350px;
             height: 500px;
             background: rgba(5, 13, 21, 0.95);
@@ -2083,6 +2083,13 @@
 
             let finalQuery = text;
             let imgBase64 = null;
+
+            // Inject the attached filename into the query so the AI knows what file was uploaded
+            if (window.chatbotAttachmentFileName) {
+                finalQuery = `[Attached file: ${window.chatbotAttachmentFileName}] ` + finalQuery;
+                window.chatbotAttachmentFileName = "";
+            }
+
             if (window.chatbotAttachmentText) {
                 finalQuery += window.chatbotAttachmentText;
                 window.chatbotAttachmentText = "";
@@ -2125,6 +2132,7 @@
         // Global variables to store attached file/image for the Chatbot
         window.chatbotAttachmentText = "";
         window.chatbotAttachmentImage = "";
+        window.chatbotAttachmentFileName = "";
 
         async function extractPDFText(file) {
             try {
@@ -2154,6 +2162,7 @@
                 if (indicator) indicator.style.display = 'none';
                 window.chatbotAttachmentText = "";
                 window.chatbotAttachmentImage = "";
+                window.chatbotAttachmentFileName = "";
                 return;
             }
 
@@ -2161,6 +2170,9 @@
                 indicator.textContent = `Attached: ${file.name}`;
                 indicator.style.display = 'block';
             }
+
+            // Store the filename for injection into the chat query
+            window.chatbotAttachmentFileName = file.name;
 
             // Handle Image files natively for Gemini vision
             if (file.type.startsWith("image/")) {
@@ -2172,15 +2184,28 @@
                 return;
             }
 
-            // Handle PDF files natively
-            if (file.type === "application/pdf") {
-                const indicatorText = indicator ? indicator.textContent : "";
+            // Handle PDF files via server-side extraction
+            if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
                 if (indicator) indicator.textContent = "Extracting PDF, please wait...";
 
-                const pdfText = await extractPDFText(file);
-                window.chatbotAttachmentText = `\n\n[Attached PDF Content (${file.name})]:\n${pdfText.substring(0, 5000)}`;
-
-                if (indicator) indicator.textContent = indicatorText;
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const token = localStorage.getItem('kpi_token') || '';
+                    const response = await fetch('http://localhost:8000/api/extract-pdf', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+                    if (!response.ok) throw new Error('PDF extraction failed');
+                    const data = await response.json();
+                    window.chatbotAttachmentText = `\n\n[Attached PDF Content (${file.name})]:\n${data.text}`;
+                    if (indicator) indicator.textContent = `Attached: ${file.name} (${data.pages} pages)`;
+                } catch (err) {
+                    console.error("Chatbot PDF Error:", err);
+                    window.chatbotAttachmentText = `\n\n[Attached PDF: ${file.name} - extraction failed]`;
+                    if (indicator) indicator.textContent = `Attached: ${file.name} (extraction failed)`;
+                }
                 return;
             }
 
@@ -2273,6 +2298,15 @@
                 notifDot.style.display = 'block';
             }
         });
+    </script>
+
+    <!-- PDF.js library for extracting text from PDF uploads -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Configure pdf.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
     </script>
 
     <script src="js/neon-app.js"></script>

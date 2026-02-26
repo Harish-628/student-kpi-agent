@@ -2055,6 +2055,12 @@ async function loadRecommendationsView() {
     // Replace the loading animation with the actual content using a horizontal css grid format
     container.innerHTML = `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">${html}</div>`;
 
+    // Prepend engagement notifications if they were fetched earlier
+    if (window._engagementHtml) {
+      container.insertAdjacentHTML('afterbegin', `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-bottom:16px;">${window._engagementHtml}</div>`);
+      window._engagementHtml = '';
+    }
+
   } catch (error) {
     console.error("Fetch Error:", error);
     container.innerHTML = `<div style="color:var(--neon-pink); padding: 20px;">Could not connect to the Neural Engine. Ensure the backend API is running.</div>`;
@@ -2078,7 +2084,36 @@ async function handleIdeaFileUpload(event) {
     indicator.style.display = 'block';
   }
 
-  // Very simple client-side text extraction for demo AI context
+  // Handle PDF files via server-side extraction
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith('.pdf')) {
+    if (indicator) indicator.textContent = "Extracting PDF text, please wait...";
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const token = localStorage.getItem('kpi_token') || '';
+      const response = await fetch('http://localhost:8000/api/extract-pdf', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      if (!response.ok) throw new Error('Server PDF extraction failed');
+      const data = await response.json();
+      window.ideaAttachmentText = `\n\n[Attached PDF Content (${file.name})]:\n${data.text}`;
+      if (indicator) indicator.textContent = `Attached: ${file.name} (${data.pages} pages extracted)`;
+    } catch (err) {
+      console.error("Idea Enhancer PDF Error:", err);
+      // Fallback: read as text (may contain partial readable content)
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        window.ideaAttachmentText = `\n\n[Attached File: ${file.name}]:\n${e.target.result.substring(0, 5000)}`;
+      };
+      reader.readAsText(file);
+      if (indicator) indicator.textContent = `Attached: ${file.name} (basic extraction)`;
+    }
+    return;
+  }
+
+  // Normal text file handler
   const reader = new FileReader();
   reader.onload = (e) => {
     window.ideaAttachmentText = `\n\n[Attached File Content (${file.name})]:\n${e.target.result.substring(0, 5000)}`;
@@ -2240,4 +2275,47 @@ document.addEventListener('DOMContentLoaded', () => {
   populateKPIDropdown();
   loadStudentKPI();
   initFacultyKPI();
+
+  // ── Engagement Notification Check ──
+  const storedUser = JSON.parse(localStorage.getItem('kpi_user') || '{}');
+  if (storedUser.email && storedUser.role === 'student') {
+    const userId = storedUser.email.split('@')[0];
+    const token = localStorage.getItem('kpi_token') || '';
+    fetch(`http://localhost:8000/api/notifications/engagement?user_id=${userId}&role=${storedUser.role}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(engagementNotifs => {
+        if (Array.isArray(engagementNotifs) && engagementNotifs.length > 0) {
+          // Show a toast for the first engagement notification
+          if (typeof showToast === 'function') {
+            showToast(engagementNotifs[0].title + ' ' + engagementNotifs[0].message.split('\n')[0], 'info');
+          }
+
+          // Prepend engagement notifications to the recommendations container if visible
+          const container = document.getElementById('recommendationsContainer');
+          if (container) {
+            let engHtml = '';
+            engagementNotifs.forEach((item, index) => {
+              let formattedMessage = item.message
+                .replace(/(?:^|\n)-\s*(.*?)(?=\n|$)/g, '<li style="margin-left:22px; margin-bottom:6px; list-style-type:disc;">$1</li>')
+                .replace(/\n/g, '<br>');
+
+              engHtml += `
+              <div class="engagement-notif" style="display:flex; flex-direction:column; gap:12px; padding:20px; animation: fadeInUp 0.4s ease forwards; animation-delay: ${index * 0.15}s; opacity:0; transform:translateY(10px); background:rgba(0,245,255,0.06); border:2px solid rgba(0,245,255,0.3); border-radius:var(--radius-md); box-shadow: 0 0 15px rgba(0,245,255,0.1);">
+                <div style="font-size:2rem; flex-shrink:0; background:rgba(0,245,255,0.15); width:50px; height:50px; border-radius:12px; display:flex; align-items:center; justify-content:center;">⚡</div>
+                <div style="flex:1; display:flex; flex-direction:column;">
+                  <h3 style="color:var(--neon-cyan); margin:0 0 8px 0; font-size:1.1rem; text-shadow: 0 0 10px rgba(0,245,255,0.5);">${item.title}</h3>
+                  <div style="color:rgba(120,180,220,0.9); margin:0; line-height:1.6; font-size:0.95rem;">${formattedMessage}</div>
+                </div>
+              </div>
+            `;
+            });
+            // Store the engagement HTML to prepend when recommendations load
+            window._engagementHtml = engHtml;
+          }
+        }
+      })
+      .catch(err => console.log('Engagement notification check failed:', err));
+  }
 });

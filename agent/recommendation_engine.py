@@ -81,6 +81,32 @@ Format your response as a deeply helpful, markdown-formatted critique. Use boldi
 """
         )
 
+        self.engagement_prompt = PromptTemplate(
+            input_variables=["student_name", "days_inactive", "kpi_score", "kpi_breakdown"],
+            template="""You are a motivational AI mentor for a student KPI tracking platform.
+The student {student_name} has been inactive for {days_inactive} days.
+Their current KPI Score is {kpi_score}/100.
+
+KPI Breakdown:
+{kpi_breakdown}
+
+Generate exactly 2 short, motivational notification messages to re-engage this student.
+Each message should:
+- Be encouraging and positive (never guilt-tripping)
+- Reference their specific weak KPI areas and suggest one concrete action
+- Use phrases like "You're just two steps away from the target!" or "Your peers are leveling up!"
+
+Respond strictly with a valid JSON array of exactly 2 objects.
+Each object must have "title" (string), "message" (string with 2-3 bullet points using '-'), and "type": "engagement".
+
+Example:
+[
+  {{"title": "⚡ You're Almost There!", "message": "- You're just two steps away from your target! 🎯\\n- Upload a hackathon certificate to jump ahead.\\n- Your peers already submitted 2 this week!", "type": "engagement"}},
+  {{"title": "🚀 Quick Win Available!", "message": "- Complete one workshop to boost your KPI by 5 points.\\n- Check the events section for upcoming opportunities!", "type": "engagement"}}
+]
+"""
+        )
+
     def enhance_idea(self, idea_text: str) -> str:
         """
         Critiques a student's idea or blog content.
@@ -100,6 +126,60 @@ Format your response as a deeply helpful, markdown-formatted critique. Use boldi
                         time.sleep(1)
                         continue
                 return f"**Error generating critique:** {err_str}\n\nOur AI engine is currently experiencing connectivity issues. Please try again in a moment."
+
+    def generate_engagement_notification(self, user_id: str):
+        """
+        Generates motivational notifications for inactive students based on their KPI data.
+        """
+        db = next(get_db())
+        try:
+            safe_student_id = user_id.upper()
+            student = db.query(Student).filter(Student.student_id == safe_student_id).first()
+            if not student:
+                return [{"title": "⚡ Welcome Back!", "message": "- You're just two steps away from your target! 🎯\n- Upload a certificate to boost your KPI score.\n- Check the events section for opportunities!", "type": "engagement"}]
+
+            kpi = db.query(KPI).filter(KPI.student_id == safe_student_id).first()
+            score = db.query(Score).filter(Score.student_id == safe_student_id).first()
+            kpi_score_val = score.kpi_score if score else 0
+
+            kpi_breakdown_text = f"""
+            Internships: {kpi.internships if kpi else 0}
+            Certifications: {kpi.certifications if kpi else 0}
+            Hackathons: {kpi.hackathons if kpi else 0}
+            Publications: {kpi.publications if kpi else 0}
+            Workshops: {kpi.workshops if kpi else 0}
+            Projects: {kpi.projects if kpi else 0}
+            Club Activities: {kpi.club_activities if kpi else 0}
+            """
+
+            days_inactive = 2
+            chain = self.engagement_prompt | self.llm
+            response = chain.invoke({
+                "student_name": student.name,
+                "days_inactive": days_inactive,
+                "kpi_score": kpi_score_val,
+                "kpi_breakdown": kpi_breakdown_text
+            })
+
+            raw = response.content.strip()
+            import re
+            json_match = re.search(r'\[.*\]', raw, re.DOTALL)
+            if json_match:
+                raw = json_match.group(0)
+            else:
+                raw = raw.replace("```json", "").replace("```", "").strip()
+
+            notifications = json.loads(raw)
+            for n in notifications:
+                n['type'] = 'engagement'
+            return notifications
+
+        except json.JSONDecodeError:
+            return [{"title": "⚡ We Miss You!", "message": "- You're just two steps away from the target! 🎯\n- Upload a certificate or complete a hackathon today.\n- Your peers are making progress!", "type": "engagement"}]
+        except Exception:
+            return [{"title": "⚡ Come Back!", "message": "- You've been away! Your KPI needs attention.\n- One small action can make a big difference.\n- Check your dashboard for quick wins!", "type": "engagement"}]
+        finally:
+            db.close()
 
     def generate_kpi_notifications(self, user_id: str, role: str = "student"):
         """

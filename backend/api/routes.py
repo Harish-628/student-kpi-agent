@@ -99,6 +99,9 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(request.password, user['password_hash']):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    # Record last_login timestamp
+    user['last_login'] = datetime.utcnow()
+    
     # Create JWT token
     token_data = {
         "sub": str(user['id']),
@@ -726,7 +729,8 @@ def process_chatbot_query(
         "user_role": request.role,
         "user_email": user_email,
         "context": "",
-        "response": ""
+        "response": "",
+        "image": request.image or ""
     }
     
     # Run the agent workflow
@@ -750,6 +754,36 @@ def enhance_student_idea(
     critique = recommendation_engine.enhance_idea(request.idea)
     return {"critique": critique}
 
+@router.post("/extract-pdf")
+async def extract_pdf_text(file: UploadFile = File(...)):
+    """
+    Server-side PDF text extraction.
+    Accepts a PDF file upload and returns the extracted text content.
+    """
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+    
+    try:
+        import PyPDF2
+        import io
+        
+        content = await file.read()
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
+        
+        full_text = ""
+        max_pages = min(len(pdf_reader.pages), 10)  # Limit to first 10 pages
+        for i in range(max_pages):
+            page = pdf_reader.pages[i]
+            page_text = page.extract_text() or ""
+            full_text += page_text + "\n"
+        
+        # Trim to reasonable length for AI context
+        extracted = full_text.strip()[:8000]
+        
+        return {"text": extracted, "pages": max_pages, "filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to extract PDF text: {str(e)}")
+
 @router.get("/notifications")
 def get_user_notifications(user_id: str, role: str):
     """
@@ -771,6 +805,50 @@ def get_user_notifications(user_id: str, role: str):
             "title": "Notification Engine Offline",
             "message": f"Could not generate insights: {str(e)}"
         }]
+
+@router.get("/notifications/engagement")
+def get_engagement_notifications(user_id: str, role: str):
+    """
+    Returns motivational notifications for students who have been inactive for 2+ days.
+    Checks last_login from MOCK_USERS.
+    """
+    if role != "student":
+        return []
+    
+    # Find the user's last_login
+    user_email = user_id
+    if "@" not in user_email:
+        user_email = f"{user_email.lower()}@college.edu"
+    
+    user = MOCK_USERS.get(user_email)
+    if not user:
+        return []
+    
+    last_login = user.get('last_login')
+    if not last_login:
+        # Never logged in before (or first login) — treat as inactive
+        return [{
+            "title": "⚡ Welcome Back!",
+            "message": "- You're just two steps away from your target! 🎯\n- Upload a certificate or complete a hackathon to boost your KPI.\n- Your peers are making progress — don't fall behind!",
+            "type": "engagement"
+        }]
+    
+    from datetime import timedelta
+    days_inactive = (datetime.utcnow() - last_login).days
+    
+    if days_inactive >= 2:
+        # Generate a motivational notification using the recommendation engine
+        try:
+            engagement = recommendation_engine.generate_engagement_notification(user_id)
+            return engagement
+        except Exception:
+            return [{
+                "title": "⚡ We Miss You!",
+                "message": f"- You've been away for {days_inactive} days!\n- You're just two steps away from the target! 🎯\n- Come back and upload a certificate to boost your KPI score!",
+                "type": "engagement"
+            }]
+    
+    return []
 
 @router.get("/events")
 def get_upcoming_events(user_id: str, db: Session = Depends(get_db)):
