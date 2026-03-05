@@ -1,18 +1,29 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 from database.database import engine, Base
 from backend.api import routes
+from backend.api.od_routes import od_router
+from backend.services.scheduler import start_scheduler, shutdown_scheduler
 import os
 from datetime import datetime
 
 # This automatically creates your database tables!
 Base.metadata.create_all(bind=engine)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown lifecycle events."""
+    start_scheduler()
+    yield
+    shutdown_scheduler()
+
 app = FastAPI(
     title="Student KPI Management System API",
-    description="Comprehensive API for managing student KPIs, authentication, analytics, and reporting",
-    version="1.0.0"
+    description="Comprehensive API for managing student KPIs, OD Requests, authentication, analytics, and reporting",
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Enable CORS for frontend communication
@@ -26,6 +37,8 @@ app.add_middleware(
 
 # Connects the API routes
 app.include_router(routes.router)
+# OD Workflow routes
+app.include_router(od_router)
 
 @app.get("/")
 def health_check():

@@ -38,8 +38,8 @@ CRITICAL: The "message" string MUST be composed of 2-3 short, punchy bullet poin
 
 Example output format:
 [
-  {{"title": "Hackathon Strategy", "message": "- You haven't participated in any hackathons!\n- Mistake: Skipping practical networking.\n- Idea: Build a simple CRUD app next weekend."}},
-  {{"title": "Recommended Blog Topic", "message": "- Your 3 projects show practical capability.\n- Action: Write a blog post titled 'Building My First Robust Full-Stack Project'."}}
+  {{"title": "Hackathon Strategy", "message": "- You haven't participated in any hackathons!\\n- Mistake: Skipping practical networking.\\n- Idea: Build a simple CRUD app next weekend."}},
+  {{"title": "Recommended Blog Topic", "message": "- Your 3 projects show practical capability.\\n- Action: Write a blog post titled 'Building My First Robust Full-Stack Project'."}}
 ]
 """
         )
@@ -189,12 +189,20 @@ Example:
         db = next(get_db())
         try:
             if role in ["faculty", "hod"]:
-                # user_id is like "fac.cse" or "hod.cse". Extract department.
-                parts = user_id.split('.')
-                dept_code = parts[1].upper() if len(parts) > 1 else "CSE"
-                
-                # Map dept code to full name for DB matching if needed, but our student_id prefix is often the dept code (e.g. CSE001)
-                students = db.query(Student).filter(Student.student_id.like(f"{dept_code}%")).all()
+                from database.models import User
+                # Fetch the faculty/HOD user to get their actual department
+                user = db.query(User).filter(User.email == user_id).first()
+                if user and user.department:
+                    dept_name = user.department
+                    # Match students by this exact department name
+                    students = db.query(Student).filter(Student.department == dept_name).all()
+                    dept_code = dept_name
+                else:
+                    # Fallback old logic if somehow it's a mock id
+                    parts = user_id.split('.')
+                    dept_code = parts[1].upper() if len(parts) > 1 else "CSE"
+                    students = db.query(Student).filter(Student.student_id.like(f"{dept_code}%")).all()
+
                 if not students:
                     return [{"title": "Department Alert", "message": f"No students found in the {dept_code} department."}]
                 
@@ -222,7 +230,7 @@ Example:
                 
             else:
                 # Student Logic
-                safe_student_id = user_id.upper()
+                safe_student_id = user_id.split("@")[0].upper()
                 student = db.query(Student).filter(Student.student_id == safe_student_id).first()
                 if not student:
                     return [{"title": "System Alert", "message": "Student profile not found. Unable to generate recommendations."}]
@@ -285,10 +293,11 @@ Example:
                 raw = raw.replace("```json", "").replace("```", "").strip()
             
             try:
-                notifications = json.loads(raw)
+                notifications = json.loads(raw, strict=False)
                 return notifications
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
                 # Fallback if the LLM output is malformed
+                print(f"JSONDecodeError: {e} | Raw string: {raw}")
                 return [{"title": "AI Error", "message": "I generated insights but failed to format them correctly. Please try again later."}]
 
         finally:

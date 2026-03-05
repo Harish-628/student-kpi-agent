@@ -1,7 +1,29 @@
 /* ============================================
    NEURALKPI — Main Application Logic
-   All student data embedded for standalone use
+   Global Loader Integration Attached
    ============================================ */
+
+const loader = document.getElementById('neuralLoader');
+const loaderStatus = document.getElementById('loaderStatus');
+
+function showLoader(statusText) {
+  if (loader) {
+    if (statusText) loaderStatus.textContent = statusText;
+    loader.classList.remove('loader-hidden');
+  }
+}
+
+function hideLoader() {
+  if (loader) {
+    loader.classList.add('loader-hidden');
+  }
+}
+
+// Fade out on initial load
+window.addEventListener('load', () => {
+  setTimeout(hideLoader, 500);
+});
+
 
 // ── STUDENT DATABASE ──────────────────────────────
 const STUDENTS = [
@@ -107,13 +129,88 @@ if ((storedUser.role === 'hod' || storedUser.role === 'faculty') && storedUser.e
   }
 }
 
-const ENRICHED = rawStudents.map(s => {
-  const kpi = KPI_DATA[s.id];
-  const score = calcKPIScore(kpi);
-  const readiness = getReadiness(score);
-  const lastUpdated = new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000).toLocaleDateString();
-  return { ...s, kpi, score, readiness, lastUpdated };
-}).sort((a, b) => b.score - a.score);
+let ENRICHED = [];
+
+async function fetchEnrichedData() {
+  try {
+    const token = localStorage.getItem('kpi_token') || '';
+
+    // First fetch students
+    const res = await fetch('http://localhost:8000/api/students?limit=1000', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!res.ok) throw new Error('Failed to fetch students');
+    const apiStudents = await res.json();
+
+    // Fetch KPI for each student
+    const enrichedPromises = apiStudents.map(async (s) => {
+      let kpi = { internships: 0, certifications: 0, hackathons: 0, publications: 0, workshops: 0, projects: 0, club_activities: 0, industrial_visits: 0 };
+      let scoreObj = {
+        kpi_score: 0,
+        career_readiness_score: 'Low Readiness'
+      };
+
+      try {
+        const kpiRes = await fetch(`http://localhost:8000/api/student/${s.student_id}/kpi`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (kpiRes.ok) kpi = await kpiRes.json();
+
+        const scoreRes = await fetch(`http://localhost:8000/api/student/${s.student_id}/score`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (scoreRes.ok) scoreObj = await scoreRes.json();
+
+      } catch (err) {
+        console.warn(`Failed to fetch KPI/Score for ${s.student_id}`, err);
+      }
+
+      return {
+        id: s.student_id,
+        name: s.name,
+        dept: s.department,
+        section: s.section,
+        year: s.year,
+        gpa: s.gpa,
+        kpi: kpi,
+        score: scoreObj.kpi_score || 0,
+        readiness: scoreObj.career_readiness_score || 'Low Readiness',
+        lastUpdated: new Date().toLocaleDateString()
+      };
+    });
+
+    ENRICHED = await Promise.all(enrichedPromises);
+    ENRICHED.sort((a, b) => b.score - a.score);
+
+    // Re-render UI components now that we have data
+    if (typeof renderStudentsTable === 'function') renderStudentsTable();
+    if (typeof initDashboardStats === 'function') initDashboardStats();
+    if (document.getElementById('section-kpi')?.classList.contains('active')) loadStudentKPI();
+
+    // Refresh student dropdown selection if they are on student pages
+    const isStudent = userInfo && userInfo.role === 'student';
+    if (isStudent && ENRICHED.length > 0) {
+      if (typeof initDashboardCharts === 'function') initDashboardCharts();
+    }
+  } catch (error) {
+    console.error("Falling back to static ENRICHED data:", error);
+    // Fallback to old behavior if API lacks data or fails
+    ENRICHED = rawStudents.map(s => {
+      const kpi = KPI_DATA[s.id] || { internships: 0, certifications: 0, hackathons: 0, publications: 0, workshops: 0, projects: 0, club_activities: 0, industrial_visits: 0 };
+      const score = calcKPIScore(kpi);
+      const readiness = getReadiness(score);
+      const lastUpdated = new Date(Date.now() - Math.floor(Math.random() * 7) * 86400000).toLocaleDateString();
+      return { ...s, kpi, score, readiness, lastUpdated };
+    }).sort((a, b) => b.score - a.score);
+
+    if (typeof renderStudentsTable === 'function') renderStudentsTable();
+    if (typeof initDashboardStats === 'function') initDashboardStats();
+  }
+}
+
+// Kick off data fetch immediately
+fetchEnrichedData();
 
 // ── CHART.JS DEFAULTS ─────────────────────────────
 Chart.defaults.color = 'rgba(120,180,220,0.7)';
@@ -212,9 +309,16 @@ if (storedUser && storedUser.role === 'admin') {
 
 // Logout
 document.getElementById('logoutBtn').addEventListener('click', () => {
+  showLoader("De-authenticating Session...");
+
   localStorage.removeItem('kpi_user');
-  window.location.href = 'index.html';
+  localStorage.removeItem('kpi_token');
+
+  setTimeout(() => {
+    window.location.href = 'index.html';
+  }, 800);
 });
+
 
 // Load user info
 const userInfo = storedUser;
@@ -392,8 +496,12 @@ function initDashboardStats() {
     }
   }
 
-  // Hide Add Student button for faculty
-  if (userInfo && userInfo.role === 'faculty') {
+  // Enable Add Student & CSV buttons for Admin/HOD only
+  if (userInfo && (userInfo.role === 'admin' || userInfo.role === 'hod')) {
+    const csvBtn = document.getElementById('uploadCsvBtn');
+    if (csvBtn) csvBtn.style.display = 'inline-block';
+  } else {
+    // Hide Add Student button for non-admins (already default hidden for CSV)
     const addBtn = document.getElementById('addStudentBtn');
     if (addBtn) addBtn.style.display = 'none';
   }
@@ -825,15 +933,32 @@ function loadStudentKPI() {
     return;
   }
 
+  const isFacultyOrHod = userInfo && (userInfo.role === 'faculty' || userInfo.role === 'hod' || userInfo.role === 'admin');
+
   const kf = Object.keys(s.kpi);
   grid.innerHTML = kf.map(k => {
-    // Add a plus button only for the logged-in student navigating their own tracker
     let actionBtns = '';
+
     if (isStudent && id === s.id) {
+      // Student sees their own: Eye + Upload buttons
       actionBtns = `
         <div style="position:absolute; top:8px; right:8px; display:flex; gap:6px;">
-          <button class="upload-kpi-btn" onclick="openViewDocumentModal('${k}', '${labels[k] || k}')" title="View Document" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:rgba(120,180,220,0.8); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; transition:all 0.3s ease;">👁️</button>
+          <button class="upload-kpi-btn" onclick="openViewDocumentModal('${k}', '${labels[k] || k}')" title="View Certificate" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:rgba(120,180,220,0.8); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; transition:all 0.3s ease;">&#x1F441;</button>
           <button class="upload-kpi-btn" onclick="openUploadModal('${k}', '${labels[k] || k}')" title="Upload Evidence" style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:var(--neon-cyan); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; transition:all 0.3s ease;">+</button>
+        </div>
+      `;
+    } else if (isFacultyOrHod && s) {
+      // Faculty/HOD sees student's KPI: Eye (view cert) + Delete (decrement) buttons
+      actionBtns = `
+        <div style="position:absolute; top:8px; right:8px; display:flex; gap:6px;">
+          <button class="upload-kpi-btn" onclick="openViewDocumentModal('${k}', '${labels[k] || k}', '${s.id}')" title="View Student Certificate"
+            style="background:rgba(0,245,255,0.1); border:1px solid rgba(0,245,255,0.3); color:rgba(120,180,220,0.8); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; transition:all 0.3s ease;">
+            &#x1F441;
+          </button>
+          <button class="upload-kpi-btn" onclick="deleteFacultyKpiEntry('${s.id}', '${k}', '${labels[k] || k}')" title="Delete / Remove this KPI entry"
+            style="background:rgba(255,0,110,0.1); border:1px solid rgba(255,0,110,0.3); color:var(--neon-pink); width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; font-size:16px; transition:all 0.3s ease;">
+            &times;
+          </button>
         </div>
       `;
     }
@@ -841,7 +966,7 @@ function loadStudentKPI() {
     return `
       <div class="kpi-metric-card" style="animation:fadeInUp .4s ease both; position:relative;">
         ${actionBtns}
-        <div class="kpi-metric-icon">${icons[k] || '📊'}</div>
+        <div class="kpi-metric-icon">${icons[k] || '&#x1F4CA;'}</div>
         <div class="kpi-metric-val">${s.kpi[k]}</div>
         <div class="kpi-metric-label">${labels[k] || k}</div>
       </div>
@@ -1556,17 +1681,79 @@ function closeUploadModal() {
 // Global scope tracker for uploaded files simulating a database
 window.uploadedFilesRegistry = window.uploadedFilesRegistry || {};
 
-function openViewDocumentModal(categoryKey, categoryLabel) {
+// categoryKey: the KPI type (e.g. 'certifications')
+// categoryLabel: human-readable label
+// studentId (optional): if provided, load this student's certificate from the API (faculty view)
+function openViewDocumentModal(categoryKey, categoryLabel, studentId) {
   const overlay = document.getElementById('viewDocumentModalOverlay');
   if (!overlay) return;
   document.getElementById('viewCategoryLabel').textContent = categoryLabel;
   const container = document.getElementById('documentViewerContainer');
 
-  // Check if we uploaded anything for this category during this session
-  const fileDataArray = window.uploadedFilesRegistry[categoryKey];
+  // ── Faculty/HOD: list all certificates from backend, each with a Delete button ──
+  if (studentId) {
+    container.innerHTML = '<div style="text-align:center;color:rgba(120,180,220,0.5);padding:30px;">Loading certificates...</div>';
+    overlay.classList.add('active');
+    const token = localStorage.getItem('kpi_token') || '';
+
+    function renderDocCards(docs) {
+      if (!docs || docs.length === 0) {
+        container.innerHTML = `
+          <div style="text-align:center;color:rgba(120,180,220,0.5);padding:30px;">
+            <div style="font-size:3rem;margin-bottom:12px;opacity:0.5;">&#x1F4C2;</div>
+            No certificate uploaded yet for <strong>${categoryLabel}</strong>.
+          </div>`;
+        return;
+      }
+      container.innerHTML = docs.map((doc, idx) => {
+        const isImg = doc.file_path && /\.(jpg|jpeg|png|gif|webp)$/i.test(doc.file_path);
+        const uploadedOn = doc.upload_date ? new Date(doc.upload_date).toLocaleString() : 'Unknown date';
+        const preview = isImg
+          ? `<img src="${doc.file_path}" style="max-width:100%;max-height:220px;object-fit:contain;border-radius:6px;border:1px solid rgba(0,245,255,0.2);margin-bottom:8px;">`
+          : `<div style="font-size:2.5rem;margin-bottom:6px;">&#x1F4C4;</div><div style="color:rgba(120,180,220,0.5);font-size:0.8rem;">PDF/Document file</div>`;
+        const openLink = !isImg && doc.file_path
+          ? `<a href="${doc.file_path}" target="_blank" style="flex:1;text-align:center;padding:6px 10px;background:rgba(0,245,255,0.08);border:1px solid rgba(0,245,255,0.2);border-radius:6px;color:var(--neon-cyan);font-size:0.8rem;text-decoration:none;">&#x1F517; Open</a>`
+          : '<span style="flex:1"></span>';
+        return `
+          <div id="docCard_${doc.id}" style="background:rgba(0,245,255,0.03);border:1px solid rgba(0,245,255,0.15);border-radius:10px;padding:14px;margin-bottom:12px;">
+            <div style="font-size:0.72rem;color:rgba(120,180,220,0.45);margin-bottom:8px;">Certificate #${idx + 1} &bull; Uploaded: ${uploadedOn}</div>
+            <div style="text-align:center;">${preview}</div>
+            <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+              ${openLink}
+              <button
+                onclick="deleteDocumentById(${doc.id}, '${studentId}', '${categoryKey}', '${categoryLabel}')"
+                style="padding:6px 14px;background:rgba(255,0,110,0.12);border:1px solid rgba(255,0,110,0.35);color:var(--neon-pink);border-radius:6px;cursor:pointer;font-size:0.82rem;font-weight:600;"
+                onmouseover="this.style.background='rgba(255,0,110,0.28)'"
+                onmouseout="this.style.background='rgba(255,0,110,0.12)'"
+                title="Delete this certificate">
+                &#x1F5D1; Delete
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    fetch(`http://localhost:8000/api/student/${studentId}/documents/${categoryKey}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(docs => { container._docs = docs; renderDocCards(docs); })
+      .catch(() => {
+        const fd = window.uploadedFilesRegistry?.[categoryKey];
+        container.innerHTML = fd && fd.length
+          ? fd.map((f, i) => f.type.startsWith('image/')
+            ? `<div style="text-align:center;margin-bottom:12px;"><img src="${f.url}" style="max-width:100%;border-radius:8px;"></div>`
+            : `<div style="text-align:center;padding:20px;"><div style="font-size:2.5rem;">&#x1F4C4;</div><div>Document #${i + 1}</div></div>`
+          ).join('')
+          : `<div style="text-align:center;color:rgba(120,180,220,0.5);padding:30px;">&#x1F4C2; No certificate found.</div>`;
+      });
+    return;
+  }
+
+  // ── Student: check local session uploads ──
+  const fileDataArray = window.uploadedFilesRegistry?.[categoryKey];
 
   if (fileDataArray && fileDataArray.length > 0) {
-    // Show the uploaded files
     container.innerHTML = fileDataArray.map((fileData, index) => {
       if (fileData.type.startsWith('image/')) {
         return `
@@ -1578,18 +1765,17 @@ function openViewDocumentModal(categoryKey, categoryLabel) {
       } else {
         return `
             <div style="width:100%; text-align:center; padding:20px; border:1px solid rgba(0,245,255,0.1); border-radius:4px; margin-bottom:10px;">
-              <div style="font-size:2.5rem;margin-bottom:10px;">📄</div>
+              <div style="font-size:2.5rem;margin-bottom:10px;">&#x1F4C4;</div>
               <div style="color:var(--neon-cyan);">Document #${index + 1} successfully uploaded.</div>
-              <div style="font-size:0.8rem;color:rgba(120,180,220,.5);margin-top:5px;">Preview not supported for PDFs from local storage memory inside this demo yet.</div>
+              <div style="font-size:0.8rem;color:rgba(120,180,220,.5);margin-top:5px;">Preview not supported for PDFs in demo mode.</div>
             </div>
           `;
       }
     }).join('');
   } else {
-    // Has not uploaded yet
     container.innerHTML = `
       <div style="text-align: center; color: rgba(120, 180, 220, 0.5);">
-        <div style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;">📂</div>
+        <div style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;">&#x1F4C2;</div>
         <div>No document has been uploaded for this category yet.</div>
         <div style="font-size: 0.8rem; margin-top: 8px;">Click the <strong>+</strong> icon to upload proof.</div>
       </div>
@@ -1604,7 +1790,107 @@ function closeViewDocumentModal() {
   if (overlay) overlay.classList.remove('active');
 }
 
-document.getElementById('certificateUploadForm')?.addEventListener('submit', (e) => {
+// ── Faculty/HOD: Delete (decrement) a student's KPI entry ────────────────────
+async function deleteFacultyKpiEntry(studentId, kpiType, kpiLabel) {
+  const confirmed = confirm(
+    `Remove one "${kpiLabel}" entry for student ${studentId}?\n\nThis will decrement the count by 1 and cannot be undone.`
+  );
+  if (!confirmed) return;
+
+  const token = localStorage.getItem('kpi_token') || '';
+  try {
+    const res = await fetch(
+      `http://localhost:8000/api/kpi/${studentId}/${kpiType}/delete`,
+      {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      }
+    );
+
+    if (res.ok) {
+      showToast(`Removed 1 entry from "${kpiLabel}" for ${studentId}`, 'success');
+      const student = ENRICHED.find(s => s.id === studentId);
+      if (student && student.kpi[kpiType] > 0) {
+        student.kpi[kpiType] -= 1;
+      }
+      loadStudentKPI();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showToast(`Delete failed: ${err.detail || res.statusText}`, 'error');
+    }
+  } catch (e) {
+    const student = ENRICHED.find(s => s.id === studentId);
+    if (student && student.kpi[kpiType] !== undefined && student.kpi[kpiType] > 0) {
+      student.kpi[kpiType] -= 1;
+      showToast(`Removed 1 "${kpiLabel}" entry (demo mode)`, 'info');
+      loadStudentKPI();
+    } else {
+      showToast(`Cannot delete: "${kpiLabel}" is already at 0`, 'error');
+    }
+  }
+}
+
+// ── Delete a specific certificate by its database ID (from inside the viewer modal) ──
+async function deleteDocumentById(docId, studentId, kpiType, kpiLabel) {
+  const confirmed = confirm(
+    `Delete this "${kpiLabel}" certificate for student ${studentId}?\n\nThis will also decrement their ${kpiLabel} count by 1.`
+  );
+  if (!confirmed) return;
+
+  const token = localStorage.getItem('kpi_token') || '';
+  try {
+    const res = await fetch(`http://localhost:8000/api/documents/${docId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (res.ok) {
+      // Remove the card from the modal without closing it
+      const card = document.getElementById(`docCard_${docId}`);
+      if (card) {
+        card.style.transition = 'opacity 0.3s ease';
+        card.style.opacity = '0';
+        setTimeout(() => {
+          card.remove();
+          // If no more cards, show empty state
+          const container = document.getElementById('documentViewerContainer');
+          if (container && !container.querySelector('[id^="docCard_"]')) {
+            container.innerHTML = `
+              <div style="text-align:center;color:rgba(120,180,220,0.5);padding:30px;">
+                <div style="font-size:3rem;margin-bottom:12px;opacity:0.5;">&#x1F4C2;</div>
+                All certificates for <strong>${kpiLabel}</strong> have been removed.
+              </div>`;
+          }
+        }, 300);
+      }
+      // Update local ENRICHED data and re-render KPI cards in background
+      const student = ENRICHED.find(s => s.id === studentId);
+      if (student && student.kpi[kpiType] > 0) {
+        student.kpi[kpiType] -= 1;
+      }
+      loadStudentKPI();
+      showToast(`Certificate deleted. "${kpiLabel}" count decremented for ${studentId}.`, 'success');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showToast(`Delete failed: ${err.detail || res.statusText}`, 'error');
+    }
+  } catch (e) {
+    // Demo / offline fallback: just remove from UI and decrement local count
+    const card = document.getElementById(`docCard_${docId}`);
+    if (card) {
+      card.style.opacity = '0';
+      setTimeout(() => card.remove(), 300);
+    }
+    const student = ENRICHED.find(s => s.id === studentId);
+    if (student && student.kpi[kpiType] > 0) {
+      student.kpi[kpiType] -= 1;
+      loadStudentKPI();
+    }
+    showToast(`Certificate removed (demo mode — backend offline).`, 'info');
+  }
+}
+
+document.getElementById('certificateUploadForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   if (!userInfo || !userInfo.email) return;
@@ -1613,12 +1899,50 @@ document.getElementById('certificateUploadForm')?.addEventListener('submit', (e)
   const fileInput = document.getElementById('certificateFile');
   if (!fileInput.files.length) return;
 
-  // HOD logic branch
-  if (userInfo.role === 'hod' && window.hodKpis) {
-    const btn = document.getElementById('uploadCertBtn');
-    btn.textContent = 'Uploading...';
+  const file = fileInput.files[0];
+  const btn = document.getElementById('uploadCertBtn');
+
+  // ELA Tamper Verification Step
+  if (file.type.startsWith("image/")) {
+    btn.textContent = 'Verifying Integrity...';
     btn.classList.add('loading');
 
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch('http://localhost:8000/api/kpi/verify-certificate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ image: base64 })
+      });
+
+      const verification = await res.json();
+
+      if (verification && verification.is_suspicious) {
+        btn.textContent = 'Upload Document';
+        btn.classList.remove('loading');
+        alert("🚨 SECURITY ALERT: Image Rejected\n\nThe uploaded document failed our Error Level Analysis (ELA) integrity check with a Tamper Score of " + verification.score + ".\n\n" + verification.message + "\n\nPlease upload an original, unmodified certificate.");
+        return;
+      }
+    } catch (err) {
+      console.warn("ELA Verification error:", err);
+      // Proceed gracefully if backend is down on localhost
+    }
+  }
+
+  // Restore button if verification passed
+  btn.textContent = 'Uploading...';
+  btn.classList.add('loading');
+
+  // HOD logic branch
+  if (userInfo.role === 'hod' && window.hodKpis) {
     // Render file preview data URL to store in registry so we can view it later
     const file = fileInput.files[0];
     if (file) {
@@ -1665,10 +1989,6 @@ document.getElementById('certificateUploadForm')?.addEventListener('submit', (e)
 
   // Faculty logic branch
   if (userInfo.role === 'faculty' && window.facKpis) {
-    const btn = document.getElementById('uploadCertBtn');
-    btn.textContent = 'Uploading...';
-    btn.classList.add('loading');
-
     // Render file preview data URL to store in registry so we can view it later
     const file = fileInput.files[0];
     if (file) {
@@ -1721,93 +2041,105 @@ document.getElementById('certificateUploadForm')?.addEventListener('submit', (e)
   if (!studentInfo) return;
 
   // Render file preview data URL to store in registry so we can view it later
-  const file = fileInput.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (!window.uploadedFilesRegistry[category]) {
-        window.uploadedFilesRegistry[category] = [];
-      }
-      window.uploadedFilesRegistry[category].push({
-        url: e.target.result,
-        type: file.type
-      });
-    };
-    reader.readAsDataURL(file);
-  }
+  if (!file) return;
 
-  const btn = document.getElementById('uploadCertBtn');
-  btn.textContent = 'Uploading...';
-  btn.classList.add('loading');
+  // Capture form reference before entering the FileReader callback (inside onload, `e` refers to the FileReader event, not the form)
+  const uploadForm = document.getElementById('certificateUploadForm');
 
-  // Simulate backend upload delay
-  setTimeout(() => {
-    // 1. Increment KPI count category
-    studentInfo.kpi[category] = (studentInfo.kpi[category] || 0) + 1;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64Data = e.target.result;
 
-    // 2. Recalculate score
-    const newScore = calcKPIScore(studentInfo.kpi);
-    studentInfo.score = newScore;
-    studentInfo.readiness = getReadiness(newScore);
-
-    // Refresh dashboard stats if it is in view
-    document.getElementById('studentProfileScore').textContent = studentInfo.score;
-    document.getElementById('studentProfileScore').style.color = getScoreColor(studentInfo.score);
-    document.getElementById('studentProfileReadiness').innerHTML = getReadinessBadge(studentInfo.readiness);
-
-    // Refresh student grid
-    if (document.getElementById('section-kpi').classList.contains('active')) {
-      loadStudentKPI();
+    if (!window.uploadedFilesRegistry[category]) {
+      window.uploadedFilesRegistry[category] = [];
     }
+    window.uploadedFilesRegistry[category].push({
+      url: base64Data,
+      type: file.type
+    });
 
-    // Replace student radar chart fully to reflect update
-    if (document.getElementById('studentRadarChart')) {
-      const fields = ['internships', 'certifications', 'hackathons', 'publications', 'workshops', 'projects', 'club_activities', 'industrial_visits', 'value_added_courses'];
-      const labels = ['Internships', 'Certs', 'Hackathons', 'Publications', 'Workshops', 'Projects', 'Club', 'Ind. Visits', 'Courses'];
-      const myVals = fields.map(f => studentInfo.kpi[f] || 0);
+    // Send actual file payload to the backend Database!
+    try {
+      const uploadRes = await fetch('http://localhost:8000/api/kpi/upload-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: sId,
+          category: category,
+          image: base64Data
+        })
+      });
 
-      // Resolve chart update instance safely
-      const chartCtx = document.getElementById('studentRadarChart');
-      let chartStatus = Chart.getChart(chartCtx);
-      if (chartStatus != undefined) {
-        chartStatus.destroy();
+      if (!uploadRes.ok) {
+        let errText = await uploadRes.text();
+        throw new Error(`Server Error: ${uploadRes.status} ${errText}`);
       }
 
-      new Chart(document.getElementById('studentRadarChart'), {
-        type: 'radar',
-        data: {
-          labels,
-          datasets: [{
-            label: 'My KPI',
-            data: myVals,
-            borderColor: '#00f5ff',
-            backgroundColor: 'rgba(0,245,255,0.15)',
-            pointBackgroundColor: '#00f5ff',
-            borderWidth: 2, pointRadius: 4
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          scales: { r: { grid: { color: 'rgba(0,245,255,0.1)' }, angleLines: { color: 'rgba(0,245,255,0.15)' }, ticks: { backdropColor: 'transparent', color: 'rgba(0,245,255,0.5)', font: { size: 9 } }, pointLabels: { color: 'rgba(120,180,220,0.7)', font: { size: 10 } } } },
-          plugins: { legend: { display: false } },
+      const resultData = await uploadRes.json();
+      console.log("Upload Success:", resultData);
+
+      // Update local state and Dashboard UI from DB success
+      await fetchEnrichedData();
+
+      const updatedStudentInfo = ENRICHED.find(s => s.id === sId);
+      if (updatedStudentInfo) {
+
+        document.getElementById('studentProfileScore').textContent = studentInfo.score;
+        document.getElementById('studentProfileScore').style.color = getScoreColor(studentInfo.score);
+        document.getElementById('studentProfileReadiness').innerHTML = getReadinessBadge(studentInfo.readiness);
+
+        if (document.getElementById('section-kpi').classList.contains('active')) {
+          loadStudentKPI();
         }
-      });
+
+        if (document.getElementById('studentRadarChart')) {
+          const fields = ['internships', 'certifications', 'hackathons', 'publications', 'workshops', 'projects', 'club_activities', 'industrial_visits', 'value_added_courses'];
+          const labels = ['Internships', 'Certs', 'Hackathons', 'Publications', 'Workshops', 'Projects', 'Club', 'Ind. Visits', 'Courses'];
+          const myVals = fields.map(f => studentInfo.kpi[f] || 0);
+
+          const chartCtx = document.getElementById('studentRadarChart');
+          let chartStatus = Chart.getChart(chartCtx);
+          if (chartStatus != undefined) chartStatus.destroy();
+
+          new Chart(document.getElementById('studentRadarChart'), {
+            type: 'radar',
+            data: {
+              labels,
+              datasets: [{
+                label: 'My KPI', data: myVals, borderColor: '#00f5ff',
+                backgroundColor: 'rgba(0,245,255,0.15)', pointBackgroundColor: '#00f5ff',
+                borderWidth: 2, pointRadius: 4
+              }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              scales: { r: { grid: { color: 'rgba(0,245,255,0.1)' }, angleLines: { color: 'rgba(0,245,255,0.15)' }, ticks: { backdropColor: 'transparent', color: 'rgba(0,245,255,0.5)', font: { size: 9 } }, pointLabels: { color: 'rgba(120,180,220,0.7)', font: { size: 10 } } } },
+              plugins: { legend: { display: false } },
+            }
+          });
+        }
+
+        btn.textContent = 'Upload Document';
+        btn.classList.remove('loading');
+        if (uploadForm) uploadForm.reset();
+
+        const successMsg = document.getElementById('uploadSuccessMsg');
+        successMsg.style.display = 'flex';
+        setTimeout(() => {
+          successMsg.style.display = 'none';
+          closeUploadModal();
+        }, 2000);
+
+        showToast(`Successfully uploaded and verified ${category.replace('_', ' ')}! (+ KPI points)`, 'success');
+      } // End if (updatedStudentInfo)
+    } catch (err) {
+      console.error("Failed to upload document:", err);
+      btn.textContent = 'Upload Document';
+      btn.classList.remove('loading');
+      showToast('Upload failed: ' + err.message, 'error');
     }
-
-    // Wrap up
-    btn.textContent = 'Upload Document';
-    btn.classList.remove('loading');
-    e.target.reset();
-
-    const successMsg = document.getElementById('uploadSuccessMsg');
-    successMsg.style.display = 'flex';
-    setTimeout(() => {
-      successMsg.style.display = 'none';
-      closeUploadModal();
-    }, 2000);
-
-    showToast(`Successfully uploaded and verified ${category.replace('_', ' ')}! (+ KPI points)`, 'success');
-  }, 1000);
+  };
+  reader.readAsDataURL(file);
 });
 
 // ── ADMIN HOD VIEWS ───────────────────────────────
@@ -2319,3 +2651,352 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(err => console.log('Engagement notification check failed:', err));
   }
 });
+
+
+// ============================================================
+// OD REQUEST WORKFLOW — Complete JavaScript Module
+// ============================================================
+
+const API = 'http://localhost:8000/api';
+
+// ── On-Load: Show/hide OD UI based on role ────────────────────
+(function initODSection() {
+  const userStr = localStorage.getItem('kpi_user');
+  if (!userStr) return;
+  const user = JSON.parse(userStr);
+
+  const applyBar = document.getElementById('od-student-apply-bar');
+  const facDash = document.getElementById('od-faculty-dashboard');
+
+  if (user.role === 'student') {
+    if (applyBar) applyBar.style.display = 'block';
+    if (facDash) facDash.style.display = 'none';
+  } else {
+    // Faculty / HOD / Admin see the full list
+    if (applyBar) applyBar.style.display = 'none';
+    if (facDash) facDash.style.display = 'block';
+    loadODRequests();
+  }
+
+  // ── FCM Deep-link URL handler ─────────────────────────────
+  const params = new URLSearchParams(window.location.search);
+  const action = params.get('action');
+  const odId = params.get('od_id');
+
+  if (action === 'claim_prize' && odId) {
+    document.getElementById('claim_od_id').value = odId;
+    document.getElementById('odClaimPrizeModalOverlay')?.classList.add('active');
+    // Scroll to OD section
+    document.getElementById('section-od')?.scrollIntoView({ behavior: 'smooth' });
+  } else if (action === 'verify_participation' && odId) {
+    document.getElementById('participated_od_id').value = odId;
+    document.getElementById('odParticipatedModalOverlay')?.classList.add('active');
+    document.getElementById('section-od')?.scrollIntoView({ behavior: 'smooth' });
+  }
+})();
+
+
+// ── Helper: Render AI Verification Badge ─────────────────────
+function renderVerifyBadge(status) {
+  if (!status) return '<span style="color:rgba(120,180,220,0.4);font-size:0.8rem;">—</span>';
+  const map = {
+    'Passed': ['verify-passed', '🛡️ Verified'],
+    'Flagged_Image_Altered': ['verify-flagged-tamper', '🚨 Forgery Detected'],
+    'Flagged_Text_Mismatch': ['verify-flagged-mismatch', '⚠️ Text Mismatch'],
+  };
+  const [cls, label] = map[status] || ['verify-passed', status];
+  return `<span class="verify-badge ${cls}">${label}</span>`;
+}
+
+
+// ── Helper: Render OD status badge ───────────────────────────
+function renderStatusBadge(status) {
+  const map = {
+    'Pending Result': 'od-status-pending',
+    'Awaiting Proof': 'od-status-awaiting',
+    'Participated': 'od-status-participated',
+    'Won': 'od-status-won',
+  };
+  const cls = map[status] || 'od-status-pending';
+  return `<span class="od-status-badge ${cls}">${status}</span>`;
+}
+
+
+// ── Load OD Requests (Faculty Dashboard) ─────────────────────
+async function loadODRequests() {
+  const container = document.getElementById('odListContainer');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;color:rgba(120,180,220,0.5);padding:40px;">Loading...</div>';
+
+  try {
+    const res = await fetch(`${API}/od/all`);
+    const data = await res.json();
+
+    if (!data.length) {
+      container.innerHTML = '<div style="text-align:center;color:rgba(120,180,220,0.4);padding:40px;">No OD requests found.</div>';
+      return;
+    }
+
+    // Header row
+    let html = `<div class="od-row" style="cursor:default">
+      <span class="od-col-head">Student</span>
+      <span class="od-col-head">Event</span>
+      <span class="od-col-head">Date</span>
+      <span class="od-col-head">Status</span>
+      <span class="od-col-head">AI Verify</span>
+    </div>`;
+
+    data.forEach(od => {
+      const prize = od.prize_details ? ` — ${od.prize_details}` : '';
+      const certBtn = od.certificate_data
+        ? `<button class="btn" onclick="event.stopPropagation();viewBase64Cert('${od.id}')"
+             style="padding:3px 10px;font-size:0.7rem;margin-left:8px;">📄 View Cert</button>`
+        : '';
+
+      html += `<div class="od-row" onclick="openODDetailModal(${JSON.stringify(od).replace(/"/g, '&quot;')})">
+        <span>${od.student_name}</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${od.event_details}</span>
+        <span>${od.date}</span>
+        <span>${renderStatusBadge(od.result_status)}${prize}${certBtn}</span>
+        <span>${renderVerifyBadge(od.verification_status)}</span>
+      </div>`;
+    });
+
+    container.innerHTML = html;
+  } catch (err) {
+    container.innerHTML = `<div style="text-align:center;color:var(--neon-pink);padding:40px;">Failed to load OD requests: ${err.message}</div>`;
+  }
+}
+
+// ── View certificate from faculty dashboard ───────────────────
+window._odCertCache = {};
+function viewBase64Cert(odId) {
+  // We'll reuse the existing viewDocumentModal if it exists
+  if (window._odCertCache[odId]) {
+    _showCertInModal(window._odCertCache[odId]);
+    return;
+  }
+  fetch(`${API}/od/${odId}`)
+    .then(r => r.json())
+    .then(od => {
+      window._odCertCache[odId] = od.certificate_data;
+      _showCertInModal(od.certificate_data);
+    });
+}
+
+function _showCertInModal(dataUrl) {
+  const container = document.getElementById('documentViewerContainer');
+  if (!container) return;
+  if (dataUrl && dataUrl.startsWith('data:image')) {
+    container.innerHTML = `<img src="${dataUrl}" style="max-width:100%;border-radius:8px;">`;
+  } else {
+    container.innerHTML = `<p style="color:rgba(120,180,220,0.7);">Certificate preview not available (PDF or text data).</p>`;
+  }
+  document.getElementById('viewDocumentModalOverlay')?.classList.add('active');
+}
+
+
+// ── Open OD Detail Modal (Faculty) ───────────────────────────
+function openODDetailModal(od) {
+  const content = document.getElementById('odDetailContent');
+  if (!content) return;
+  const rows = [
+    ['Student', od.student_name],
+    ['Student ID', od.student_id],
+    ['College', od.college_name],
+    ['Event', od.event_details],
+    ['Date', od.date],
+    ['Time', `${od.start_time} → ${od.end_time}`],
+    ['Days', od.days],
+    ['Status', renderStatusBadge(od.result_status)],
+    ['Prize', od.prize_details || '—'],
+    ['AI Verification', renderVerifyBadge(od.verification_status)],
+    ['Submitted', new Date(od.created_at).toLocaleString()],
+  ];
+  content.innerHTML = rows.map(([label, val]) =>
+    `<div class="od-detail-row">
+      <span class="od-detail-label">${label}</span>
+      <span class="od-detail-value">${val}</span>
+    </div>`
+  ).join('');
+  if (od.certificate_data) {
+    content.innerHTML += `<button class="btn btn-solid-cyan" onclick="viewBase64Cert(${od.id})"
+      style="margin-top:12px;padding:8px 20px;font-size:0.85rem;">📄 View Certificate</button>`;
+  }
+  document.getElementById('odDetailModalOverlay')?.classList.add('active');
+}
+
+function closeODDetailModal() {
+  document.getElementById('odDetailModalOverlay')?.classList.remove('active');
+}
+
+
+// ── Open / Close OD Apply Modal (Student) ────────────────────
+function openODApplyModal() {
+  document.getElementById('odApplyModalOverlay')?.classList.add('active');
+}
+function closeODApplyModal() {
+  document.getElementById('odApplyModalOverlay')?.classList.remove('active');
+  document.getElementById('odApplyForm')?.reset();
+}
+
+
+// ── Submit OD Request (Student) ──────────────────────────────
+async function submitODRequest(e) {
+  e.preventDefault();
+  const userStr = localStorage.getItem('kpi_user');
+  if (!userStr) { alert('Please log in first.'); return; }
+  const user = JSON.parse(userStr);
+
+  const btn = document.getElementById('odApplySubmitBtn');
+  btn.textContent = 'Submitting...';
+  btn.disabled = true;
+
+  const payload = {
+    student_id: user.email.split('@')[0].toUpperCase(),
+    student_name: user.name || user.email,
+    college_name: document.getElementById('od_college_name').value,
+    date: document.getElementById('od_date').value,
+    start_time: document.getElementById('od_start_time').value,
+    end_time: document.getElementById('od_end_time').value,
+    event_details: document.getElementById('od_event_details').value,
+    days: parseInt(document.getElementById('od_days').value),
+    fcm_token: null    // TODO: supply real FCM token once Firebase SDK is integrated in the app
+  };
+
+  try {
+    const res = await fetch(`${API}/od/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Submit failed');
+    closeODApplyModal();
+    showToast('✅ OD Request submitted successfully!', 'success');
+  } catch (err) {
+    showToast(`❌ Failed: ${err.message}`, 'error');
+  } finally {
+    btn.textContent = 'Submit OD Request';
+    btn.disabled = false;
+  }
+}
+
+
+// ── Prize button selection ────────────────────────────────────
+let _selectedPrize = null;
+function selectPrize(btn) {
+  document.querySelectorAll('.prize-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  _selectedPrize = btn.dataset.prize;
+  // Enable submit after prize is selected
+  document.getElementById('odClaimSubmitBtn').disabled = false;
+}
+
+
+// ── Submit OD Result with Certificate (Won flow) ─────────────
+async function submitODResult(e, resultType) {
+  e.preventDefault();
+  const odId = document.getElementById('claim_od_id').value;
+  if (!odId) { alert('Invalid OD request. Please re-open via the notification link.'); return; }
+
+  const fileInput = document.getElementById('od_certificate_file');
+  const file = fileInput?.files[0];
+  const btn = document.getElementById('odClaimSubmitBtn');
+  const warning = document.getElementById('odClaimElaWarning');
+
+  btn.textContent = '🔍 Verifying Certificate...';
+  btn.disabled = true;
+  if (warning) warning.style.display = 'none';
+
+  let certBase64 = null;
+
+  if (file && file.type.startsWith('image/')) {
+    // Run a quick client-side ELA pre-check
+    certBase64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
+
+    try {
+      const elaRes = await fetch(`${API}/kpi/verify-certificate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: certBase64 })
+      });
+      const elaData = await elaRes.json();
+
+      if (elaData.is_suspicious) {
+        if (warning) {
+          warning.innerHTML = `🚨 <strong>Security Alert:</strong> This image failed our Error Level Analysis check (Tamper Score: ${elaData.score}). Please upload an original, unedited certificate.`;
+          warning.style.display = 'block';
+        }
+        btn.textContent = 'Submit Result & Certificate';
+        btn.disabled = false;
+        return;    // Block submission
+      }
+    } catch (err) {
+      console.warn('ELA pre-check failed (non-blocking):', err);
+    }
+  } else if (file) {
+    // For PDFs or other files just read as base64
+    certBase64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  btn.textContent = '📤 Submitting...';
+
+  try {
+    const res = await fetch(`${API}/od/${odId}/upload-result`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        result: resultType,
+        prize_details: _selectedPrize,
+        certificate_base64: certBase64
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.detail || 'Submission failed');
+
+    document.getElementById('odClaimPrizeModalOverlay')?.classList.remove('active');
+
+    const verifyMsg = data.verification_status === 'Passed'
+      ? '✅ Certificate verified by AI!'
+      : `⚠️ Submitted (AI Note: ${data.verification_status?.replace(/_/g, ' ')})`;
+
+    showToast(`🏆 Result submitted! ${verifyMsg}`, 'success');
+
+    // Clean up URL params to prevent re-triggering
+    window.history.replaceState({}, '', window.location.pathname);
+  } catch (err) {
+    showToast(`❌ Failed: ${err.message}`, 'error');
+  } finally {
+    btn.textContent = 'Submit Result & Certificate';
+    btn.disabled = false;
+  }
+}
+
+
+// ── Confirm Participated (no certificate needed) ──────────────
+async function confirmParticipated() {
+  const odId = document.getElementById('participated_od_id').value;
+  if (!odId) { alert('Invalid OD ID.'); return; }
+
+  try {
+    const res = await fetch(`${API}/od/${odId}/participated`, { method: 'PUT' });
+    if (!res.ok) throw new Error('Update failed');
+
+    document.getElementById('odParticipatedModalOverlay')?.classList.remove('active');
+    showToast('✅ Participation confirmed! Your faculty has been notified.', 'success');
+    window.history.replaceState({}, '', window.location.pathname);
+  } catch (err) {
+    showToast(`❌ Failed: ${err.message}`, 'error');
+  }
+}
+

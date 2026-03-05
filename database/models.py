@@ -74,6 +74,7 @@ class Student(Base):
     phone = Column(String, nullable=True)
     date_of_birth = Column(DateTime, nullable=True)
     enrollment_date = Column(DateTime, default=datetime.utcnow)
+    fcm_token = Column(String, nullable=True)  # For push notifications
     
     # Relationships
     kpis = relationship("KPI", back_populates="student", uselist=False, cascade="all, delete-orphan")
@@ -281,3 +282,35 @@ class EventCache(Base):
     
     def __repr__(self):
         return f"<EventCache(query='{self.query}', updated='{self.last_fetched}')>"
+
+
+class ODRequest(Base):
+    """
+    On Duty (OD) Request model for tracking student event participation.
+    """
+    
+    __tablename__ = "od_requests"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(String, ForeignKey("students.student_id"), nullable=False, index=True)
+    student_name = Column(String, nullable=False)
+    college_name = Column(String, nullable=False)
+    date = Column(String, nullable=False)        # "YYYY-MM-DD"
+    start_time = Column(String, nullable=False)  # "HH:MM"
+    end_time = Column(String, nullable=False)    # "HH:MM"
+    event_details = Column(String, nullable=False)
+    days = Column(Integer, default=1, nullable=False)
+    result_status = Column(String, default="Pending Result", nullable=False)
+    prize_details = Column(String, nullable=True)
+    certificate_data = Column(String, nullable=True)
+    verification_status = Column(String, nullable=True)
+    fcm_token = Column(String, nullable=True)
+    faculty_notified = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    student = relationship("Student", backref="od_requests")
+    
+    def __repr__(self):
+        return f"<ODRequest(id={self.id}, student='{self.student_id}', event='{self.event_details}')>"
+

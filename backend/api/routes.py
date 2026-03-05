@@ -14,12 +14,15 @@ import io
 import json
 import requests
 import os
+import uuid
+import time
+from backend.security.ela import analyze_image_tampering
 
 from database.database import get_db
-from database.models import Student, KPI, Score, User, Milestone, PerformanceHistory, EventCache
+from database.models import Student, KPI, Score, User, Milestone, PerformanceHistory, EventCache, CertificateUpload
 from backend.schemas import (
     StudentCreate, StudentUpdate, StudentResponse,
-    KPIAdd, KPIUpdate, KPIResponse,
+    KPIAdd, KPIUpdate, KPIResponse, CertificateManualUpload,
     ScoreResponse, MilestoneCreate, MilestoneResponse,
     UserLoginRequest, UserLoginResponse, UserRegister, UserResponse,
     DepartmentStats, YearStats, AnalyticsResponse, ComparisonMetrics
@@ -334,7 +337,108 @@ def delete_student(
     return {"message": f"Student {student_id} deleted successfully"}
 
 
+class CertificateVerifyRequest(BaseModel):
+    image: str
+
 # ============ KPI Management Endpoints ============
+
+@router.post("/kpi/verify-certificate")
+def verify_certificate_upload(request: CertificateVerifyRequest):
+    """
+    Validates manual certificate uploads using ELA tamper detection.
+    Called from the frontend before processing the KPI addition.
+    """
+    try:
+        ela_result = analyze_image_tampering(request.image)
+        return {
+            "is_suspicious": ela_result["is_suspicious"],
+            "score": ela_result["score"],
+            "message": ela_result["message"]
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {
+            "is_suspicious": False, 
+            "score": 0, 
+            "message": f"System validation error: {str(e)}"
+        }
+
+@router.post("/kpi/upload-document")
+def upload_manual_certificate(
+    upload: CertificateManualUpload,
+    db: Session = Depends(get_db)
+):
+    """
+    Handles student manual certificate uploads.
+    Saves the Base64 image to the CertificateUpload table and increments the respective KPI.
+    """
+    # Verify student exists
+    student = db.query(Student).filter(Student.student_id == upload.student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # 1. Save certificate to DB
+    doc = CertificateUpload(
+        student_id=upload.student_id,
+        category=upload.category,
+        file_path=upload.image,  # Storing the base64 string directly in file_path
+        upload_date=datetime.utcnow()
+    )
+    db.add(doc)
+
+    # 2. Increment KPI count category
+    kpi_row = db.query(KPI).filter(KPI.student_id == upload.student_id).first()
+    if not kpi_row:
+        # Create an empty KPI row if the student doesn't have one yet
+        kpi_row = KPI(student_id=upload.student_id)
+        db.add(kpi_row)
+        db.flush()
+    
+    if hasattr(kpi_row, upload.category):
+        current_val = getattr(kpi_row, upload.category) or 0
+        setattr(kpi_row, upload.category, current_val + 1)
+        kpi_row.last_updated = datetime.utcnow()
+        
+    db.commit()
+    
+    # 3. Recalculate and store the score inline (cannot call route handler directly)
+    try:
+        kpi_row_fresh = db.query(KPI).filter(KPI.student_id == upload.student_id).first()
+        if kpi_row_fresh:
+            kpi_dict = {
+                'internships': kpi_row_fresh.internships or 0,
+                'certifications': kpi_row_fresh.certifications or 0,
+                'hackathons': kpi_row_fresh.hackathons or 0,
+                'publications': kpi_row_fresh.publications or 0,
+                'workshops': kpi_row_fresh.workshops or 0,
+                'projects': kpi_row_fresh.projects or 0,
+                'club_activities': kpi_row_fresh.club_activities or 0,
+                'industrial_visits': kpi_row_fresh.industrial_visits or 0,
+                'research_papers': kpi_row_fresh.research_papers or 0,
+            }
+            kpi_score = calculate_kpi_score(kpi_dict)
+            career_readiness = predict_career_readiness(kpi_score)
+
+            existing_score = db.query(Score).filter(Score.student_id == upload.student_id).first()
+            if existing_score:
+                existing_score.kpi_score = kpi_score
+                existing_score.career_readiness_score = career_readiness
+                existing_score.overall_performance = kpi_score
+            else:
+                db.add(Score(
+                    student_id=upload.student_id,
+                    kpi_score=kpi_score,
+                    career_readiness_score=career_readiness,
+                    overall_performance=kpi_score
+                ))
+            db.commit()
+    except Exception as score_err:
+        # Non-critical: don't fail the whole upload if score calc breaks
+        pass
+
+    return {"message": f"Successfully uploaded {upload.category} document", "status": "success"}
+
 
 @router.post("/kpi/add", response_model=KPIResponse)
 def add_kpi(
@@ -390,13 +494,72 @@ def update_kpi(
     return db_kpi
 
 
-@router.get("/student/{student_id}/kpi", response_model=KPIResponse)
-def get_student_kpi(student_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
-    """Retrieve KPI data for a student."""
-    kpi = db.query(KPI).filter(KPI.student_id == student_id).first()
-    if not kpi:
-        raise HTTPException(status_code=404, detail="KPI data not found for this student")
-    return kpi
+@router.get("/student/{student_id}/documents/{category}")
+def list_student_documents(
+    student_id: str,
+    category: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """List all uploaded certificates for a student in a given KPI category."""
+    docs = (
+        db.query(CertificateUpload)
+        .filter(
+            CertificateUpload.student_id == student_id,
+            CertificateUpload.category == category
+        )
+        .order_by(CertificateUpload.upload_date.desc())
+        .all()
+    )
+    return [
+        {
+            "id": d.id,
+            "student_id": d.student_id,
+            "category": d.category,
+            "file_path": d.file_path,
+            "upload_date": d.upload_date.isoformat() if d.upload_date else None,
+            "filename": d.file_path.split("/")[-1] if d.file_path else f"document_{d.id}"
+        }
+        for d in docs
+    ]
+
+
+@router.delete("/documents/{doc_id}")
+def delete_student_document(
+    doc_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    """Delete a specific uploaded certificate by its ID. Faculty/HOD/Admin only."""
+    if current_user["role"] not in ["admin", "hod", "faculty"]:
+        raise HTTPException(status_code=403, detail="Only faculty/HOD/admin can delete certificates")
+
+    doc = db.query(CertificateUpload).filter(CertificateUpload.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    student_id = doc.student_id
+    category = doc.category
+
+    # Remove the physical file if it exists on disk
+    import os as _os
+    if doc.file_path and _os.path.exists(doc.file_path):
+        try:
+            _os.remove(doc.file_path)
+        except Exception:
+            pass
+
+    db.delete(doc)
+
+    # Decrement the KPI count for this category
+    kpi_row = db.query(KPI).filter(KPI.student_id == student_id).first()
+    if kpi_row and hasattr(kpi_row, category):
+        current_val = getattr(kpi_row, category, 0) or 0
+        setattr(kpi_row, category, max(0, current_val - 1))
+        kpi_row.last_updated = datetime.utcnow()
+
+    db.commit()
+    return {"message": f"Document {doc_id} deleted and KPI '{category}' decremented for {student_id}"}
 
 
 @router.post("/kpi/upload")
@@ -723,12 +886,30 @@ def process_chatbot_query(
     if "@" not in user_email and request.role == "student":
         user_email = f"{user_email.lower()}@college.edu"
 
+    # ELA Tamper Detection Step
+    ela_status_msg = ""
+    if request.image:
+        try:
+            ela_result = analyze_image_tampering(request.image)
+            
+            # Immediate Rejection if highly tampered
+            if ela_result["is_suspicious"]:
+                return {
+                    "response": f"🚨 **Security Alert: Image Rejected**\n\nThe uploaded document failed our Error Level Analysis (ELA) integrity check with a Tamper Score of {ela_result['score']}.\n\n{ela_result['message']}\n\nPlease upload an original, unmodified certificate."
+                }
+                
+            ela_status_msg = f"[System Note: ELA Integrity Check Passed (Score: {ela_result['score']}). {ela_result['message']}]"
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            raise
+
     # Prepare inputs for LangGraph
     initial_state = {
         "query": request.query,
         "user_role": request.role,
         "user_email": user_email,
-        "context": "",
+        "context": ela_status_msg,
         "response": "",
         "image": request.image or ""
     }
@@ -849,6 +1030,73 @@ def get_engagement_notifications(user_id: str, role: str):
             }]
     
     return []
+
+@router.get("/notifications/realtime")
+def get_realtime_notifications(user_id: str, role: str, db: Session = Depends(get_db)):
+    """
+    Returns WhatsApp-style real-time notifications (OD Request updates + Inactivity).
+    """
+    notifications = []
+    
+    # Check Inactivity (Student only)
+    if role == "student":
+        user_email = user_id if "@" in user_id else f"{user_id.lower()}@college.edu"
+        user = MOCK_USERS.get(user_email)
+        if user and user.get("last_login"):
+            from datetime import timedelta, datetime
+            days_inactive = (datetime.utcnow() - user.get("last_login")).days
+            if days_inactive >= 2:
+                notifications.append({
+                    "title": "Inactivity Alert \u23f0",
+                    "message": f"You haven't logged any new KPIs in {days_inactive} days. Keep your streak alive!",
+                    "type": "alert",
+                    "timestamp": "Just now"
+                })
+
+    # Fetch OD Requests Status
+    from database.models import ODRequest
+    from datetime import datetime
+    
+    if role == "student":
+        safe_student_id = user_id.upper().split("@")[0]
+        # Get active or recently processed OD requests (not just submitted yesterday)
+        ods = db.query(ODRequest).filter(
+            ODRequest.student_id == safe_student_id,
+            ODRequest.result_status != "Pending Result"
+        ).order_by(ODRequest.id.desc()).limit(10).all()
+        
+        for od in ods:
+            icon = "✅" if od.result_status in ["Won", "Participated"] else "⏳"
+            action_html = ""
+            
+            # If the cron job marked it as needing proof, give them quick links to verify or claim prize
+            if od.result_status == "Awaiting Proof":
+                action_html = f'''
+                <div style="margin-top:8px; display:flex; gap:8px;">
+                    <a href="?action=verify_participation&od_id={od.id}" class="btn btn-outline-cyan btn-sm" style="font-size:0.7rem; padding: 4px 8px;">✔️ Verify</a>
+                    <a href="?action=claim_prize&od_id={od.id}" class="btn btn-solid-cyan btn-sm" style="font-size:0.7rem; padding: 4px 8px;">🏆 Claim Prize</a>
+                </div>
+                '''
+            
+            notifications.append({
+                "title": f"OD Event Ended {icon}",
+                "message": f"Your OD request for '{od.event_details}' has concluded. Status: {od.result_status}." + action_html,
+                "type": "od",
+                "timestamp": f"For {od.date}"
+            })
+            
+    elif role in ["faculty", "hod"]:
+        # Get pending OD requests for their department
+        ods = db.query(ODRequest).filter(ODRequest.result_status == "Pending Result").order_by(ODRequest.id.desc()).all()
+        for od in ods:
+            notifications.append({
+                "title": f"New OD Request 📩",
+                "message": f"{od.student_name} ({od.student_id}) requested OD for '{od.event_details}'.",
+                "type": "od",
+                "timestamp": f"For {od.date}"
+            })
+            
+    return notifications
 
 @router.get("/events")
 def get_upcoming_events(user_id: str, db: Session = Depends(get_db)):

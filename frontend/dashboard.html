@@ -60,6 +60,132 @@
             box-shadow: 0 0 16px rgba(0, 245, 255, 0.4);
         }
 
+        /* ── OD Specific Styles ── */
+        .prize-btn {
+            padding: 14px 10px;
+            border: 1px solid rgba(0, 245, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(0, 245, 255, 0.05);
+            color: var(--neon-cyan);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .prize-btn:hover {
+            background: rgba(0, 245, 255, 0.12);
+            border-color: var(--neon-cyan);
+        }
+
+        .prize-btn.selected {
+            background: rgba(0, 245, 255, 0.2);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 12px rgba(0, 245, 255, 0.3);
+        }
+
+        .od-row {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr 1fr auto;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 24px;
+            border-bottom: 1px solid rgba(0, 245, 255, 0.08);
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 0.9rem;
+            color: #c8e8ff;
+        }
+
+        .od-row:hover {
+            background: rgba(0, 245, 255, 0.04);
+        }
+
+        .od-row .od-col-head {
+            font-size: 0.75rem;
+            color: rgba(120, 180, 220, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .od-status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .od-status-pending {
+            background: rgba(255, 200, 0, 0.12);
+            color: #ffc800;
+            border: 1px solid rgba(255, 200, 0, 0.3);
+        }
+
+        .od-status-awaiting {
+            background: rgba(0, 153, 255, 0.12);
+            color: #0099ff;
+            border: 1px solid rgba(0, 153, 255, 0.3);
+        }
+
+        .od-status-participated {
+            background: rgba(57, 255, 20, 0.12);
+            color: var(--neon-green);
+            border: 1px solid rgba(57, 255, 20, 0.3);
+        }
+
+        .od-status-won {
+            background: rgba(255, 215, 0, 0.15);
+            color: #ffd700;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .verify-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .verify-passed {
+            background: rgba(57, 255, 20, 0.12);
+            color: var(--neon-green);
+            border: 1px solid rgba(57, 255, 20, 0.3);
+        }
+
+        .verify-flagged-tamper {
+            background: rgba(255, 0, 110, 0.12);
+            color: var(--neon-pink);
+            border: 1px solid rgba(255, 0, 110, 0.3);
+        }
+
+        .verify-flagged-mismatch {
+            background: rgba(255, 165, 0, 0.12);
+            color: #ffa500;
+            border: 1px solid rgba(255, 165, 0, 0.3);
+        }
+
+        .od-detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 245, 255, 0.08);
+        }
+
+        .od-detail-label {
+            color: rgba(120, 180, 220, 0.6);
+            font-size: 0.85rem;
+        }
+
+        .od-detail-value {
+            color: #c8e8ff;
+            font-weight: 500;
+        }
+
         .logo-text {
             font-family: var(--font-display);
             font-size: .95rem;
@@ -1111,10 +1237,92 @@
                 height: 400px;
             }
         }
+
+        /* ═══════════════════════════════════
+           GLOBAL NEON LOADING OVERLAY
+           ═══════════════════════════════════ */
+        #neuralLoader {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #050505;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 28px;
+            z-index: 9999;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        #neuralLoader.loader-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .nl-spinner {
+            width: 64px;
+            height: 64px;
+            border: 3px solid transparent;
+            border-top-color: #00f3ff;
+            border-right-color: #00f3ff;
+            border-radius: 50%;
+            animation: nl-spin 0.75s linear infinite;
+            box-shadow: 0 0 18px #00f3ff80, 0 0 40px #00f3ff40;
+        }
+
+        @keyframes nl-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .nl-logo {
+            font-family: 'Rajdhani', 'Orbitron', monospace;
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: 6px;
+            color: #00f3ff;
+            text-shadow: 0 0 12px #00f3ff, 0 0 30px #00f3ff80;
+            margin: 0;
+        }
+
+        .nl-status {
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-size: 0.78rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #00f3ffbb;
+            text-shadow: 0 0 8px #00f3ff66;
+            animation: nl-pulse 2s ease-in-out infinite;
+            margin: 0;
+        }
+
+        @keyframes nl-pulse {
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <!-- ══ GLOBAL NEON LOADING OVERLAY ══ -->
+    <div id="neuralLoader">
+        <div class="nl-spinner"></div>
+        <h1 class="nl-logo">NeuralKPI</h1>
+        <p class="nl-status" id="loaderStatus">Initializing System...</p>
+    </div>
     <div class="bg-grid"></div>
     <div class="bg-scanlines"></div>
 
@@ -1178,6 +1386,9 @@
                 </button>
                 <button class="nav-link" data-section="idea-enhancer" id="navIdeaEnhancerBtn" style="display: none;">
                     <span class="nav-icon">✨</span><span class="nav-text">Idea Enhancer</span>
+                </button>
+                <button class="nav-link" data-section="od" id="navOdBtn">
+                    <span class="nav-icon">📋</span><span class="nav-text">On Duty (OD)</span>
                 </button>
             </div>
         </nav>
@@ -1380,7 +1591,7 @@
                         <div style="display:flex; gap:10px;">
                             <input type="file" id="studentCsvUpload" accept=".csv" style="display:none;"
                                 onchange="uploadStudentCSV(event)">
-                            <button class="btn btn-outline-cyan btn-sm" id="uploadCsvBtn"
+                            <button class="btn btn-outline-cyan btn-sm" id="uploadCsvBtn" style="display:none;"
                                 onclick="document.getElementById('studentCsvUpload').click()">⇧ Upload CSV</button>
                             <button class="btn btn-solid-cyan btn-sm" id="addStudentBtn" onclick="openAddStudent()">+
                                 Add
@@ -1742,7 +1953,40 @@
             </section>
 
 
+            <!-- ── ON DUTY (OD) SECTION ── -->
+            <section class="section" id="section-od">
+                <div class="section-heading">📋 On Duty (OD) Management</div>
+                <div class="section-sub" style="margin-bottom:20px;">Apply for OD, track active events, and view
+                    verification results.</div>
+
+                <!-- Student: Apply Button -->
+                <div id="od-student-apply-bar" style="display:none; margin-bottom: 20px;">
+                    <button class="btn btn-solid-cyan" onclick="openODApplyModal()"
+                        style="padding: 12px 28px; font-size: 1rem;">
+                        📝 Apply for On Duty (OD)
+                    </button>
+                </div>
+
+                <!-- Faculty / HOD: OD List Dashboard -->
+                <div id="od-faculty-dashboard">
+                    <div class="chart-card" style="padding: 0; overflow: hidden;">
+                        <div class="chart-card-header" style="padding: 16px 24px;">
+                            <span class="chart-card-title">📋 Active OD Requests</span>
+                            <button class="btn btn-solid-cyan" onclick="loadODRequests()"
+                                style="padding:6px 16px; font-size:0.8rem; margin-left:auto;">🔄 Refresh</button>
+                        </div>
+                        <div id="odListContainer" style="padding: 8px 0;">
+                            <div style="text-align:center; color:rgba(120,180,220,0.5); padding: 40px;">
+                                Loading OD requests...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
             <!-- ── ANALYTICS SECTION ── -->
+
             <section class="section" id="section-analytics">
                 <div class="section-heading">📈 Advanced Analytics</div>
                 <div class="section-sub" style="margin-bottom:20px;">Deep-dive into performance data across all
@@ -1937,7 +2181,125 @@
         </div>
     </div>
 
+    <!-- ── OD APPLY MODAL (Student) ── -->
+    <div class="neon-modal-overlay" id="odApplyModalOverlay">
+        <div class="neon-modal" style="min-width: 540px; max-width: 95vw;">
+            <div class="neon-modal-header">
+                <h2 class="neon-modal-title">📋 Apply for On Duty (OD)</h2>
+                <button class="modal-close-btn" onclick="closeODApplyModal()">✖</button>
+            </div>
+            <form id="odApplyForm" style="display:flex;flex-direction:column;gap:14px;"
+                onsubmit="submitODRequest(event)">
+                <div>
+                    <label class="form-label">College / Institution Name</label>
+                    <input class="neon-input" id="od_college_name" placeholder="e.g. IIT Madras" required
+                        style="width:100%;">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                    <div>
+                        <label class="form-label">Date of Event</label>
+                        <input class="neon-input" id="od_date" type="date" required style="width:100%;">
+                    </div>
+                    <div>
+                        <label class="form-label">Number of Days</label>
+                        <input class="neon-input" id="od_days" type="number" min="1" max="7" value="1" required
+                            style="width:100%;">
+                    </div>
+                    <div>
+                        <label class="form-label">Start Time</label>
+                        <input class="neon-input" id="od_start_time" type="time" required style="width:100%;">
+                    </div>
+                    <div>
+                        <label class="form-label">End Time</label>
+                        <input class="neon-input" id="od_end_time" type="time" required style="width:100%;">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Event Name / Details</label>
+                    <textarea class="neon-input" id="od_event_details" rows="3"
+                        placeholder="e.g. National Level Hackathon - Smart India Hackathon 2026" required
+                        style="width:100%;resize:none;"></textarea>
+                </div>
+                <button type="submit" class="btn btn-solid-cyan" id="odApplySubmitBtn"
+                    style="margin-top:8px;padding:12px;font-size:1rem;">
+                    🚀 Submit OD Request
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── OD DETAIL MODAL (Faculty/HOD) ── -->
+    <div class="neon-modal-overlay" id="odDetailModalOverlay">
+        <div class="neon-modal" style="min-width:560px; max-width:95vw;">
+            <div class="neon-modal-header">
+                <h2 class="neon-modal-title">📋 OD Request Details</h2>
+                <button class="modal-close-btn" onclick="closeODDetailModal()">✖</button>
+            </div>
+            <div id="odDetailContent"
+                style="display:flex;flex-direction:column;gap:12px;font-size:0.95rem;color:#c8e8ff;"></div>
+        </div>
+    </div>
+
+    <!-- ── CLAIM PRIZE MODAL (Deep-link from FCM [Won]) ── -->
+    <div class="neon-modal-overlay" id="odClaimPrizeModalOverlay">
+        <div class="neon-modal" style="min-width:500px; max-width:95vw;">
+            <div class="neon-modal-header">
+                <h2 class="neon-modal-title">🏆 Congratulations! Claim Your Prize</h2>
+                <button class="modal-close-btn"
+                    onclick="document.getElementById('odClaimPrizeModalOverlay').classList.remove('active')">✖</button>
+            </div>
+            <p style="color:rgba(120,180,220,0.8);font-size:0.9rem;margin-bottom:16px;">What prize did you win? Upload
+                your certificate as proof.</p>
+            <form id="odClaimPrizeForm" style="display:flex;flex-direction:column;gap:14px;"
+                onsubmit="submitODResult(event, 'Won')">
+                <input type="hidden" id="claim_od_id" value="">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <button type="button" class="prize-btn" data-prize="1st Prize" onclick="selectPrize(this)">🥇 1st
+                        Prize</button>
+                    <button type="button" class="prize-btn" data-prize="2nd Prize" onclick="selectPrize(this)">🥈 2nd
+                        Prize</button>
+                    <button type="button" class="prize-btn" data-prize="3rd Prize" onclick="selectPrize(this)">🥉 3rd
+                        Prize</button>
+                    <button type="button" class="prize-btn" data-prize="Consolation" onclick="selectPrize(this)">🎖️
+                        Consolation</button>
+                </div>
+                <div>
+                    <label class="form-label">Upload Certificate (Image or PDF)</label>
+                    <input type="file" id="od_certificate_file" class="neon-input" accept="image/*,.pdf"
+                        style="width:100%;padding:10px;">
+                </div>
+                <div id="odClaimElaWarning"
+                    style="display:none;color:var(--neon-pink);font-size:0.85rem;padding:10px;border:1px solid rgba(255,0,110,0.3);border-radius:8px;">
+                </div>
+                <button type="submit" id="odClaimSubmitBtn" class="btn btn-solid-cyan"
+                    style="padding:12px;font-size:1rem;" disabled>
+                    ✅ Submit Result & Certificate
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── PARTICIPATED CONFIRMATION ── -->
+    <div class="neon-modal-overlay" id="odParticipatedModalOverlay">
+        <div class="neon-modal" style="min-width:400px;max-width:95vw;text-align:center;">
+            <div class="neon-modal-header">
+                <h2 class="neon-modal-title">✅ Confirm Participation</h2>
+                <button class="modal-close-btn"
+                    onclick="document.getElementById('odParticipatedModalOverlay').classList.remove('active')">✖</button>
+            </div>
+            <p style="color:rgba(120,180,220,0.8);font-size:0.95rem;margin:16px 0 24px;">
+                We'll mark your participation for this event.<br>No certificate required for participated status.
+            </p>
+            <input type="hidden" id="participated_od_id" value="">
+            <button class="btn btn-solid-cyan" style="padding:12px 32px;font-size:1rem;"
+                onclick="confirmParticipated()">
+                👍 Confirm Participated
+            </button>
+        </div>
+    </div>
+
     <!-- ── VIEW DOCUMENT MODAL ── -->
+
     <div class="neon-modal-overlay" id="viewDocumentModalOverlay">
         <div class="neon-modal" style="width: 500px; max-width: 95vw;">
             <div class="neon-modal-header">
@@ -2265,7 +2627,7 @@
             try {
                 const storedUser = JSON.parse(storedUserStr);
                 const userId = storedUser.email.split('@')[0];
-                const targetUrl = `http://localhost:8000/api/notifications?user_id=${encodeURIComponent(userId)}&role=${encodeURIComponent(storedUser.role)}`;
+                const targetUrl = `http://localhost:8000/api/notifications/realtime?user_id=${encodeURIComponent(userId)}&role=${encodeURIComponent(storedUser.role)}`;
 
                 const response = await fetch(targetUrl);
 
@@ -2277,9 +2639,10 @@
                     notifDropdown.innerHTML = `<div style="padding:16px;text-align:center;color:var(--neon-cyan);font-size:0.85rem">No new notifications at this time.</div>`;
                 } else {
                     notifDropdown.innerHTML = data.map(notif => `
-                        <div class="notif-item">
-                            <div class="notif-item-title">✨ ${notif.title}</div>
-                            <div class="notif-item-message">${notif.message}</div>
+                        <div class="notif-item" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; margin-bottom: 8px;">
+                            <div class="notif-item-title" style="font-size: 0.95rem; color: var(--neon-cyan); font-weight: 600; margin-bottom: 4px;">${notif.title}</div>
+                            <div class="notif-item-message" style="font-size: 0.85rem; color: #ccc; line-height: 1.3;">${notif.message}</div>
+                            <div style="font-size: 0.7rem; color: rgba(255,255,255,0.4); text-align: right; margin-top: 4px;">${notif.timestamp || 'Just now'}</div>
                         </div>
                     `).join('');
                 }
@@ -2309,7 +2672,7 @@
         }
     </script>
 
-    <script src="js/neon-app.js"></script>
+    <script src="js/neon-app.js?v=20260305"></script>
 </body>
 
 </html>

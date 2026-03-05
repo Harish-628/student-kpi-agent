@@ -1,122 +1,75 @@
 @echo off
 REM ============================================================
-REM Student KPI Management System - Quick Start Script
-REM Windows Batch File for Easy Startup
+REM  NeuralKPI — One-Click Start Script
+REM  Double-click this file to start everything
 REM ============================================================
 
 setlocal enabledelayedexpansion
 
-echo.
-echo ========================================
-echo Student KPI Management System
-echo Quick Start Script v1.0
-echo ========================================
-echo.
+REM Store project root immediately before anything changes it
+set ROOT=%~dp0
+if "%ROOT:~-1%"=="\" set ROOT=%ROOT:~0,-1%
 
-REM Check if Python is installed
+cd /d "%ROOT%"
+
+echo.
+echo ========================================
+echo   NeuralKPI — Starting All Servers
+echo ========================================
+echo.
+REM Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8+ from https://www.python.org/downloads/
+    echo ERROR: Python not found. Install from https://www.python.org
     pause
     exit /b 1
 )
+echo [OK] Python found
 
-echo ✓ Python detected
-echo.
-
-REM Check if in correct directory
-if not exist "backend\main.py" (
-    echo ERROR: This batch file must be run from the project root directory
-    echo Current directory: %CD%
-    echo Expected files not found
-    pause
-    exit /b 1
-)
-
-echo ✓ Project directory verified
-echo.
-
-REM Create venv if it doesn't exist
-if not exist "venv" (
-    echo Creating Python virtual environment...
-    python -m venv venv
-    if errorlevel 1 (
-        echo ERROR: Failed to create virtual environment
-        pause
-        exit /b 1
-    )
-    echo ✓ Virtual environment created
-) else (
-    echo ✓ Virtual environment already exists
-)
-
-echo.
-
-REM Activate venv
-call venv\Scripts\activate.bat
-if errorlevel 1 (
-    echo ERROR: Failed to activate virtual environment
-    pause
-    exit /b 1
-)
-
-echo ✓ Virtual environment activated
-echo.
-
-REM Check if requirements are installed
+REM Install dependencies if fastapi is missing
 pip show fastapi >nul 2>&1
 if errorlevel 1 (
-    echo Installing dependencies ^(this may take a few minutes^)...
+    echo Installing dependencies ^(first run only^)...
     pip install -r requirements.txt
-    if errorlevel 1 (
-        echo ERROR: Failed to install dependencies
-        pause
-        exit /b 1
-    )
-    echo ✓ Dependencies installed
-) else (
-    echo ✓ Dependencies already installed
+)
+echo [OK] Dependencies ready
+
+echo.
+echo Running OD database migration...
+python migrate_od.py
+echo.
+
+REM Kill anything on port 8000 or 8080
+for /f "tokens=5" %%a in ('netstat -aon ^| find ":8000 "') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
+for /f "tokens=5" %%a in ('netstat -aon ^| find ":8080 "') do (
+    taskkill /F /PID %%a >nul 2>&1
 )
 
-echo.
-echo ========================================
-echo Startup Complete!
-echo ========================================
-echo.
-echo Opening servers in new windows...
-echo.
+echo Starting Backend API  ^(port 8000^)...
+start "NeuralKPI - Backend" cmd /k "cd /d %ROOT% && python -m uvicorn backend.main:app --reload --port 8000"
 
-REM Start Backend API Server
-echo Starting Backend API Server (Port 8000)...
-start cmd /k "cd /d %CD% && venv\Scripts\activate.bat && uvicorn backend.main:app --reload --port 8000"
+echo Waiting for backend to start...
+timeout /t 4 /nobreak >nul
 
-REM Wait a moment for backend to start
-timeout /t 2 /nobreak
+echo Starting Frontend Server ^(port 8080^)...
+start "NeuralKPI - Frontend" cmd /k "cd /d %ROOT%\frontend && python -m http.server 8080"
 
-REM Start Frontend Server
-echo Starting Frontend Server (Port 8080)...
-start cmd /k "cd /d %CD%\frontend && venv\Scripts\activate.bat && python -m http.server 8080"
+timeout /t 2 /nobreak >nul
+
+echo Opening browser...
+start http://localhost:8080/dashboard.html
 
 echo.
 echo ========================================
-echo ✓ All Servers Started!
+echo   All servers started!
 echo ========================================
 echo.
-echo Please close these windows when done:
-echo   - Backend API window (Python/Uvicorn)
-echo   - Frontend Server window (HTTP Server)
-echo.
-echo Access the application:
-echo   Frontend:    http://localhost:8080
+echo   Dashboard:   http://localhost:8080/dashboard.html
 echo   API Docs:    http://localhost:8000/docs
 echo   API Health:  http://localhost:8000/
 echo.
-echo Demo Credentials:
-echo   Email:    student@example.com (or admin@example.com)
-echo   Password: student123 (or admin123)
+echo   Close the "Backend" and "Frontend" windows to stop servers.
 echo.
-echo ========================================
-echo.
-
 pause

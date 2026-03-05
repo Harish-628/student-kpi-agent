@@ -45,6 +45,7 @@ class StudentCreate(BaseModel):
     gpa: Optional[float] = 0.0
     phone: Optional[str] = None
     date_of_birth: Optional[datetime] = None
+    fcm_token: Optional[str] = None
 
 class StudentUpdate(BaseModel):
     name: Optional[str] = None
@@ -53,6 +54,7 @@ class StudentUpdate(BaseModel):
     phone: Optional[str] = None
     section: Optional[str] = None
     year: Optional[int] = None
+    fcm_token: Optional[str] = None
 
 class StudentResponse(BaseModel):
     student_id: str
@@ -65,11 +67,17 @@ class StudentResponse(BaseModel):
     phone: Optional[str]
     date_of_birth: Optional[datetime]
     enrollment_date: datetime
+    fcm_token: Optional[str]
     
     class Config:
         from_attributes = True
 
 # ============ KPI Schemas ============
+
+class CertificateManualUpload(BaseModel):
+    student_id: str
+    category: str
+    image: str  # Base64 string of the uploaded file
 
 class KPIAdd(BaseModel):
     student_id: str
@@ -200,3 +208,43 @@ class PerformanceTrendResponse(BaseModel):
     historical_scores: List[tuple]  # [(timestamp, score)]
     trend_direction: str  # up, down, stable
     improvement_rate: float  # percentage change per month
+
+
+# ============ On Duty (OD) Request Schemas ============
+
+class ODRequestCreate(BaseModel):
+    student_id: str
+    student_name: str
+    college_name: str
+    date: str              # "YYYY-MM-DD"
+    start_time: str        # "HH:MM"
+    end_time: str          # "HH:MM"
+    event_details: str
+    days: int = 1
+    fcm_token: Optional[str] = None
+
+class ODResultSubmit(BaseModel):
+    result: str                          # "Won" or "Participated"
+    prize_details: Optional[str] = None  # "1st Prize", "2nd Prize", etc.
+    certificate_base64: Optional[str] = None  # data:image/jpeg;base64,...
+
+class ODRequestResponse(BaseModel):
+    id: int
+    student_id: str
+    student_name: str
+    college_name: str
+    date: str
+    start_time: str
+    end_time: str
+    event_details: str
+    days: int
+    result_status: str
+    prize_details: Optional[str]
+    verification_status: Optional[str]
+    faculty_notified: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+

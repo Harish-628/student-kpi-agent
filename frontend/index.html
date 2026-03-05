@@ -551,10 +551,93 @@
         padding: 40px 32px;
       }
     }
+
+    /* ═══════════════════════════════════
+       GLOBAL NEON LOADING OVERLAY
+       ═══════════════════════════════════ */
+    #neuralLoader {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #050505;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      z-index: 9999;
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+    }
+
+    #neuralLoader.loader-hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .nl-spinner {
+      width: 60px;
+      height: 60px;
+      border: 3px solid transparent;
+      border-top-color: #00f3ff;
+      border-right-color: #00f3ff;
+      border-radius: 50%;
+      animation: nl-spin 0.75s linear infinite;
+      box-shadow: 0 0 18px #00f3ff80, 0 0 40px #00f3ff40;
+    }
+
+    @keyframes nl-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .nl-logo {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: 6px;
+      color: #00f3ff;
+      text-shadow: 0 0 12px #00f3ff, 0 0 30px #00f3ff80;
+      margin: 0;
+    }
+
+    .nl-status {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #00f3ffbb;
+      text-shadow: 0 0 8px #00f3ff66;
+      animation: nl-pulse 2s ease-in-out infinite;
+      margin: 0;
+    }
+
+    @keyframes nl-pulse {
+
+      0%,
+      100% {
+        opacity: 0.5;
+      }
+
+      50% {
+        opacity: 1;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <!-- ══ GLOBAL NEON LOADING OVERLAY ══ -->
+  <div id="neuralLoader">
+    <div class="nl-spinner"></div>
+    <h1 class="nl-logo">NEURALKPI</h1>
+    <p class="nl-status" id="loaderStatus">Initializing System...</p>
+  </div>
+
   <!-- Background layers -->
   <div class="bg-grid"></div>
   <div class="bg-scanlines"></div>
@@ -708,6 +791,28 @@
   <div class="neon-toast" id="toast"></div>
 
   <script>
+    // ---- Loader Logic ----
+    const loader = document.getElementById('neuralLoader');
+    const loaderStatus = document.getElementById('loaderStatus');
+
+    function showLoader(statusText) {
+      if (loader) {
+        if (statusText) loaderStatus.textContent = statusText;
+        loader.classList.remove('loader-hidden');
+      }
+    }
+
+    function hideLoader() {
+      if (loader) {
+        loader.classList.add('loader-hidden');
+      }
+    }
+
+    // Page Load Logic: Wait 500ms then fade out
+    window.addEventListener('load', () => {
+      setTimeout(hideLoader, 500);
+    });
+
     // ---- Demo credential auto-fill ----
     function fillDemoCredentials(email, password, role) {
       document.getElementById('loginEmail').value = email;
@@ -722,7 +827,7 @@
       pw.type = pw.type === 'password' ? 'text' : 'password';
     });
 
-    // ---- Login form submission ----
+    // ---- Login form submission INTERCEPTION ----
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('loginEmail').value.trim();
@@ -732,82 +837,71 @@
       const errorMsg = document.getElementById('errorMsg');
 
       if (!email || !password || !role) {
-        showError('Please fill in all fields');
+        if (typeof showError === 'function') showError('Please fill in all fields');
+        else showToast('Please fill in all fields', 'error');
         return;
       }
 
+      // 1. Show global loader & update status
+      showLoader("Authenticating Credentials...");
+
       btn.textContent = '⟳ AUTHENTICATING...';
       btn.classList.add('loading');
-      errorMsg.classList.remove('show');
+      if (errorMsg) errorMsg.classList.remove('show');
 
-      // Simulate auth (replace with real API call when backend is running)
-      setTimeout(() => {
-        let validCreds = [
-          { email: 'admin@kpi.edu', password: 'admin123', role: 'admin' },
-          { email: 'hod.cse@kpi.edu', password: 'hod123', role: 'hod' },
-          { email: 'hod.ece@kpi.edu', password: 'hod123', role: 'hod' },
-          { email: 'hod.mech@kpi.edu', password: 'hod123', role: 'hod' },
-          { email: 'hod.ce@kpi.edu', password: 'hod123', role: 'hod' },
-          { email: 'hod.it@kpi.edu', password: 'hod123', role: 'hod' },
-          { email: 'hod.ai@kpi.edu', password: 'hod123', role: 'hod' },
-          // Custom Faculty logins
-          { email: 'fac.cse@kpi.edu', password: 'faculty123', role: 'faculty' },
-          { email: 'fac.ece@kpi.edu', password: 'faculty123', role: 'faculty' },
-          { email: 'fac.mech@kpi.edu', password: 'faculty123', role: 'faculty' },
-          { email: 'fac.ce@kpi.edu', password: 'faculty123', role: 'faculty' },
-          { email: 'fac.it@kpi.edu', password: 'faculty123', role: 'faculty' },
-          { email: 'fac.ai@kpi.edu', password: 'faculty123', role: 'faculty' },
-          // All 21 student logins (password: student123 for all)
-          { email: 'cse001@college.edu', password: 'student123', role: 'student' },
-          { email: 'cse002@college.edu', password: 'student123', role: 'student' },
-          { email: 'cse003@college.edu', password: 'student123', role: 'student' },
-          { email: 'cse004@college.edu', password: 'student123', role: 'student' },
-          { email: 'cse005@college.edu', password: 'student123', role: 'student' },
-          { email: 'ece001@college.edu', password: 'student123', role: 'student' },
-          { email: 'ece002@college.edu', password: 'student123', role: 'student' },
-          { email: 'ece003@college.edu', password: 'student123', role: 'student' },
-          { email: 'ece004@college.edu', password: 'student123', role: 'student' },
-          { email: 'me001@college.edu', password: 'student123', role: 'student' },
-          { email: 'me002@college.edu', password: 'student123', role: 'student' },
-          { email: 'me003@college.edu', password: 'student123', role: 'student' },
-          { email: 'ce001@college.edu', password: 'student123', role: 'student' },
-          { email: 'ce002@college.edu', password: 'student123', role: 'student' },
-          { email: 'it001@college.edu', password: 'student123', role: 'student' },
-          { email: 'it002@college.edu', password: 'student123', role: 'student' },
-          { email: 'it003@college.edu', password: 'student123', role: 'student' },
-          { email: 'ai001@college.edu', password: 'student123', role: 'student' },
-          { email: 'ai002@college.edu', password: 'student123', role: 'student' },
-          { email: 'ai003@college.edu', password: 'student123', role: 'student' },
-          { email: 'ai004@college.edu', password: 'student123', role: 'student' },
-        ];
+      // 2. Mock API Call with try/catch
+      try {
+        await new Promise((resolve, reject) => {
+          setTimeout(() => {
+            const validCreds = [
+              { email: 'admin@kpi.edu', password: 'admin123', role: 'admin' },
+              { email: 'hod.cse@kpi.edu', password: 'hod123', role: 'hod' },
+              { email: 'fac.cse@kpi.edu', password: 'faculty123', role: 'faculty' },
+              { email: 'cse001@college.edu', password: 'student123', role: 'student' }
+            ];
 
-        // Ensure all 30 faculty logins are valid
-        for (let i = 1; i <= 30; i++) {
-          validCreds.push({
-            email: `fac${String(i).padStart(2, '0')}@kpi.edu`,
-            password: 'faculty123',
-            role: 'faculty'
-          });
-        }
+            // Add back the bulk creds for robustness in the mock
+            for (let i = 1; i <= 30; i++) {
+              validCreds.push({ email: `fac${String(i).padStart(2, '0')}@kpi.edu`, password: 'faculty123', role: 'faculty' });
+            }
+            const depts = ['cse', 'ece', 'me', 'ce', 'it', 'ai'];
+            depts.forEach(d => {
+              for (let i = 1; i <= 5; i++) validCreds.push({ email: `${d}${String(i).padStart(3, '0')}@college.edu`, password: 'student123', role: 'student' });
+            });
 
-        const match = validCreds.find(c => c.email === email && c.password === password && c.role === role);
+            const match = validCreds.find(c => c.email === email && c.password === password && c.role === role);
 
-        if (match) {
-          const userData = { email, role, name: getRoleName(role, email) };
-          localStorage.setItem('kpi_user', JSON.stringify(userData));
-          // Create a mock JWT token for the backend API to parse
-          const mockJwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + btoa(JSON.stringify(userData)) + ".mocksignature";
-          localStorage.setItem('kpi_token', mockJwt);
+            if (match) resolve(match);
+            else reject(new Error('Invalid login credentials'));
+          }, 1500);
+        });
 
-          showToast('Authentication successful! Redirecting...', 'success');
-          setTimeout(() => { window.location.href = 'dashboard.html'; }, 1200);
-        } else {
-          btn.textContent = '▶ INITIALIZE SESSION';
-          btn.classList.remove('loading');
-          showError('Invalid credentials or role mismatch');
-        }
-      }, 1400);
+        // 3. Success: Update status and redirect
+        if (loaderStatus) loaderStatus.textContent = "Access Granted. Loading Dashboard...";
+
+        const userData = { email, role, name: typeof getRoleName === 'function' ? getRoleName(role, email) : role.toUpperCase() };
+        localStorage.setItem('kpi_user', JSON.stringify(userData));
+        const mockJwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." + btoa(JSON.stringify(userData)) + ".mocksignature";
+        localStorage.setItem('kpi_token', mockJwt);
+
+        showToast('Authentication successful!', 'success');
+
+        // Wait 1 second before redirect
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 1000);
+
+      } catch (err) {
+        // 4. Failure: Hide loader & show error
+        hideLoader();
+        btn.textContent = '▶ INITIALIZE SESSION';
+        btn.classList.remove('loading');
+        if (typeof showError === 'function') showError(err.message);
+        else showToast(err.message, 'error');
+      }
     });
+
+
 
     function getRoleName(role, email = '') {
       if (role === 'admin') return 'System Administrator';
