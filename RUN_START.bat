@@ -65,13 +65,14 @@ for /f "tokens=5" %%a in ('netstat -aon ^| find ":8080 "') do (
 
 REM 6. Start Servers
 echo Starting Backend API (port 8000)...
-start "NeuralKPI - Backend" cmd /k "cd /d %ROOT% && call venv\Scripts\activate.bat 2>nul && python -m uvicorn backend.main:app --reload --port 8000"
+set PYTHONPATH=%ROOT%
+start "NeuralKPI - Backend" cmd /k "cd /d %ROOT% && set PYTHONPATH=%ROOT% && venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000"
 
 echo Waiting for backend...
 timeout /t 3 /nobreak >nul
 
 echo Starting Frontend Server (port 8080)...
-start "NeuralKPI - Frontend" cmd /k "cd /d %ROOT%\frontend && python -m http.server 8080"
+start "NeuralKPI - Frontend" cmd /k "cd /d %ROOT%\frontend && ..\venv\Scripts\python.exe -m http.server 8080"
 
 timeout /t 2 /nobreak >nul
 
