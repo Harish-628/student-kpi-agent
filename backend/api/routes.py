@@ -1260,14 +1260,21 @@ async def neural_live(request: NeuralLiveRequest, db: Session = Depends(get_db))
 
     except Exception as e:
         import traceback
+        error_msg = str(e)
         print(f"[Neural Live ERROR] Exception type: {type(e).__name__}")
-        print(f"[Neural Live ERROR] Message: {str(e)}")
+        print(f"[Neural Live ERROR] Message: {error_msg}")
         print(f"[Neural Live ERROR] Traceback:\n{traceback.format_exc()}")
-        # Return a role-aware fallback so TTS always has something to say
+        
+        # Role-aware fallback + raw error for debugging (as requested by user)
         fallbacks = {
             "student": "I'm analysing your KPI profile. Try asking me about your certifications or internships.",
             "faculty": "I can help you review student performance metrics. Try asking about top performers.",
             "hod":     "I can provide department-level insights. Ask me about department averages or trends.",
             "admin":   "System is operational. Ask me about overall KPI statistics or student counts.",
         }
-        return {"response": fallbacks.get(request.role, "Neural Live is ready. How can I assist you today?"), "user_id": request.user_id, "role": request.role}
+        fallback_res = fallbacks.get(request.role, "Neural Live is ready. How can I assist you today?")
+        
+        # Appending actual error for explicit exposure
+        final_res = f"{fallback_res}\n\n[DEBUG ERROR]: {error_msg}"
+        
+        return {"response": final_res, "user_id": request.user_id, "role": request.role}

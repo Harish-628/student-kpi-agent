@@ -104,7 +104,9 @@ Now, answer the User's Query.
             active_tools = [get_top_students, upload_certificate_kpi]
             
         # 2. Compile the ReAct Agent Graph with the tools subset
-        agent = create_react_agent(self.llm, tools=active_tools)
+        # Explicit Tool Binding to the LLM instance
+        llm_with_tools = self.llm.bind_tools(active_tools)
+        agent = create_react_agent(llm_with_tools, tools=active_tools)
         
         # 3. Format the specific instructions for this turn
         sys_msg = SystemMessage(content=self.system_instructions.format(
@@ -132,11 +134,23 @@ Now, answer the User's Query.
         else:
             human_msg = HumanMessage(content=query)
         
-        # 4. Invoke the Graph
+        # 4. Invoke the Graph with Verbose Logging
+        print(f"[WebChatbot] Invoking agent for query: {query[:50]}...")
+        print(f"[WebChatbot] Bound tools: {[t.name for t in active_tools]}")
+        
         response_state = agent.invoke({"messages": [sys_msg, human_msg]})
         
+        # Find the last message and check for tool calls
+        last_message = response_state["messages"][-1]
+        
+        # Verbose Logging of tool calls as requested
+        if hasattr(last_message, "tool_calls"):
+            print(f"[WebChatbot] RAW Tool Calls: {last_message.tool_calls}")
+        else:
+            print("[WebChatbot] No tool_calls found on the last message.")
+
         # The agent's final answer is always the last AIMessage in the state
-        content = response_state["messages"][-1].content
+        content = last_message.content
         if isinstance(content, list):
             # Sometimes LangChain returns a list of blocks like [{'type': 'text', 'text': '...'}]
             final_answer = " ".join([block.get("text", "") for block in content if isinstance(block, dict) and "text" in block])
@@ -145,6 +159,7 @@ Now, answer the User's Query.
         else:
             final_answer = str(content)
             
+        print(f"[WebChatbot] Final Answer: {final_answer[:100]}...")
         return final_answer
 
 
