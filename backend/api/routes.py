@@ -1216,6 +1216,7 @@ async def neural_live(request: NeuralLiveRequest, db: Session = Depends(get_db))
     Receives a transcribed voice query and returns a concise,
     spoken-language AI response.
     """
+    print(f"[Neural Live] Received query from user_id='{request.user_id}' role='{request.role}': {request.query[:80]}")
     try:
         # Build a context-aware prompt depending on the user's role
         role_context = {
@@ -1227,28 +1228,42 @@ async def neural_live(request: NeuralLiveRequest, db: Session = Depends(get_db))
 
         full_query = f"{role_context}\n\nUser said: {request.query}\n\nReply in 2-3 short sentences suitable for text-to-speech."
 
+        # FIXED: AgentState expects 'user_role' and 'user_email', NOT 'role'/'user_id'
+        # Also supply 'context' and 'response' defaults so nodes never hit a KeyError
+        invoke_input = {
+            "query":      full_query,
+            "user_role":  request.role,          # was incorrectly 'role'
+            "user_email": request.user_id,        # was incorrectly 'user_id'
+            "context":    "",                     # will be filled by retrieve_vector_context_node
+            "response":   "",                     # will be filled by generate_response_node
+            "image":      None
+        }
+        print(f"[Neural Live] Invoking agent_workflow with keys: {list(invoke_input.keys())}")
+
         # Route through the existing LangGraph agent workflow
-        result = await agent_workflow.ainvoke({
-            "query": full_query,
-            "user_id": request.user_id,
-            "role": request.role,
-            "image": None
-        })
+        result = await agent_workflow.ainvoke(invoke_input)
+        print(f"[Neural Live] agent_workflow returned keys: {list(result.keys()) if isinstance(result, dict) else type(result)}")
 
-        response_text = result.get("response") or result.get("output") or "I'm here to help. Could you rephrase your question?"
+        response_text = (
+            result.get("response") if isinstance(result, dict) else None
+        ) or "I'm here to help. Could you rephrase your question?"
 
-        # Strip markdown or bullet points — TTS works better with plain sentences
+        # Strip markdown — TTS works better with plain sentences
         import re
-        response_text = re.sub(r"\*\*?|__?|#+\s?|`", "", response_text)
+        response_text = re.sub(r"\*\*?|__?|#+\s?|`", "", str(response_text))
         response_text = response_text.replace("\n", " ").strip()
-        # Truncate to ~600 chars so speech is not too long
         if len(response_text) > 600:
             response_text = response_text[:600].rsplit(" ", 1)[0] + "."
 
+        print(f"[Neural Live] Sending response ({len(response_text)} chars)")
         return {"response": response_text, "user_id": request.user_id, "role": request.role}
 
     except Exception as e:
-        # Graceful fallback — still return something speakable
+        import traceback
+        print(f"[Neural Live ERROR] Exception type: {type(e).__name__}")
+        print(f"[Neural Live ERROR] Message: {str(e)}")
+        print(f"[Neural Live ERROR] Traceback:\n{traceback.format_exc()}")
+        # Return a role-aware fallback so TTS always has something to say
         fallbacks = {
             "student": "I'm analysing your KPI profile. Try asking me about your certifications or internships.",
             "faculty": "I can help you review student performance metrics. Try asking about top performers.",

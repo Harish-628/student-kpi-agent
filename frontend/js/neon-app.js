@@ -3282,8 +3282,14 @@ async function confirmParticipated() {
         const reply = data.response || 'Sorry, I could not get a response. Please try again.';
         if (this._tx) this._tx.textContent = reply;
         this._speak(reply);
-      } catch {
-        this._setStatus('Network error — backend unreachable', 'pink');
+      } catch (err) {
+        // Task 2: Enhanced frontend error logging — visible in browser DevTools console
+        console.error('[Neural Live] Fetch error caught:', err);
+        if (err instanceof TypeError) {
+          console.error('[Neural Live] Likely cause: backend is unreachable (CORS or server down)');
+        }
+        this._setStatus('Network error — see DevTools console', 'pink');
+        if (this._tx) this._tx.textContent = `Error: ${err.message || err}`;
       }
     }
 
