@@ -46,7 +46,7 @@ echo [OK] Dependencies ready.
 
 REM 4. Database Migration (Conditional)
 echo.
-if exist "migrate_od.py" (
+if exist "%ROOT%\migrate_od.py" (
     echo [OK] Running OD database migration...
     python migrate_od.py
 ) else (
