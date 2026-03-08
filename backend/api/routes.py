@@ -1201,3 +1201,58 @@ def health_check():
         "timestamp": datetime.utcnow().isoformat()
     }
 
+
+# ============ Neural Live — Voice AI ============
+
+class NeuralLiveRequest(BaseModel):
+    query: str
+    user_id: str = "user"
+    role: str = "student"
+
+@router.post("/neural-live")
+async def neural_live(request: NeuralLiveRequest, db: Session = Depends(get_db)):
+    """
+    Voice-to-voice AI endpoint for Neural Live.
+    Receives a transcribed voice query and returns a concise,
+    spoken-language AI response.
+    """
+    try:
+        # Build a context-aware prompt depending on the user's role
+        role_context = {
+            "student":  "You are Neural, a personal AI academic coach speaking directly to a student. Be encouraging and concise.",
+            "faculty":  "You are Neural, an AI assistant for faculty. Be professional and data-driven. Stay concise.",
+            "hod":      "You are Neural, a strategic AI advisor for a Head of Department. Be analytical. Stay concise.",
+            "admin":    "You are Neural, a system AI for an administrator. Be clear and factual. Stay concise.",
+        }.get(request.role, "You are Neural, an AI assistant. Be concise.")
+
+        full_query = f"{role_context}\n\nUser said: {request.query}\n\nReply in 2-3 short sentences suitable for text-to-speech."
+
+        # Route through the existing LangGraph agent workflow
+        result = await agent_workflow.ainvoke({
+            "query": full_query,
+            "user_id": request.user_id,
+            "role": request.role,
+            "image": None
+        })
+
+        response_text = result.get("response") or result.get("output") or "I'm here to help. Could you rephrase your question?"
+
+        # Strip markdown or bullet points — TTS works better with plain sentences
+        import re
+        response_text = re.sub(r"\*\*?|__?|#+\s?|`", "", response_text)
+        response_text = response_text.replace("\n", " ").strip()
+        # Truncate to ~600 chars so speech is not too long
+        if len(response_text) > 600:
+            response_text = response_text[:600].rsplit(" ", 1)[0] + "."
+
+        return {"response": response_text, "user_id": request.user_id, "role": request.role}
+
+    except Exception as e:
+        # Graceful fallback — still return something speakable
+        fallbacks = {
+            "student": "I'm analysing your KPI profile. Try asking me about your certifications or internships.",
+            "faculty": "I can help you review student performance metrics. Try asking about top performers.",
+            "hod":     "I can provide department-level insights. Ask me about department averages or trends.",
+            "admin":   "System is operational. Ask me about overall KPI statistics or student counts.",
+        }
+        return {"response": fallbacks.get(request.role, "Neural Live is ready. How can I assist you today?"), "user_id": request.user_id, "role": request.role}

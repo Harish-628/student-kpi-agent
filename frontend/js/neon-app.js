@@ -3044,3 +3044,176 @@ async function confirmParticipated() {
   }
 }
 
+// ══════════════════════════════════════════════════
+// NEURAL LIVE  —  voice-to-voice AI engine
+// ══════════════════════════════════════════════════
+class NeuralLive {
+  constructor() {
+    this.overlay = document.getElementById('neural-live-overlay');
+    this.core = document.getElementById('neural-core');
+    this.statusEl = document.getElementById('nl-status-text');
+    this.txEl = document.getElementById('nl-transcript');
+    this.micBtn = document.getElementById('btn-nl-mic');
+    this.closeBtn = document.getElementById('btn-nl-close');
+
+    this.audioCtx = null;
+    this.analyser = null;
+    this.micStream = null;
+    this.rafId = null;
+    this.recog = null;
+    this.isListening = false;
+
+    document.getElementById('btn-neural-live')?.addEventListener('click', () => this.open());
+    this.closeBtn?.addEventListener('click', () => this.close());
+    this.micBtn?.addEventListener('click', () => this.toggleListening());
+    this.core?.addEventListener('click', () => this.toggleListening());
+  }
+
+  open() {
+    this.overlay?.classList.add('active');
+    this._setStatus('Tap the orb to begin', 'cyan');
+    this.txEl.textContent = '';
+  }
+
+  close() {
+    this.stopListening();
+    window.speechSynthesis?.cancel();
+    this.overlay?.classList.remove('active');
+    this._stopAudioViz();
+    this.core?.classList.remove('listening', 'speaking');
+    if (this.core) this.core.style.transform = '';
+  }
+
+  _setStatus(msg, colour) {
+    if (!this.statusEl) return;
+    const map = { cyan: 'rgba(0,245,255,0.7)', green: 'rgba(57,255,20,0.8)', purple: 'rgba(191,0,255,0.8)', pink: 'rgba(255,0,110,0.8)' };
+    this.statusEl.textContent = msg;
+    this.statusEl.style.color = map[colour] || map.cyan;
+  }
+
+  async toggleListening() {
+    this.isListening ? this.stopListening() : await this.startListening();
+  }
+
+  async startListening() {
+    if (this.isListening) return;
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      this._setStatus('Microphone access denied', 'pink');
+      return;
+    }
+    // AudioContext for real-time orb reactivity
+    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    this.analyser = this.audioCtx.createAnalyser();
+    this.analyser.fftSize = 64;
+    const src = this.audioCtx.createMediaStreamSource(this.micStream);
+    src.connect(this.analyser);
+    this._startAudioViz();
+
+    // Speech recognition
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { this._setStatus('SpeechRecognition not supported in this browser', 'pink'); return; }
+    this.recog = new SR();
+    this.recog.lang = 'en-US';
+    this.recog.interimResults = true;
+    this.recog.continuous = false;
+
+    this.recog.onstart = () => {
+      this.isListening = true;
+      this.core?.classList.add('listening');
+      this.core?.classList.remove('speaking');
+      this.micBtn?.classList.add('active-mic');
+      if (this.micBtn) this.micBtn.textContent = '⏹ STOP LISTENING';
+      this._setStatus('Listening...', 'green');
+    };
+
+    this.recog.onresult = (e) => {
+      let interim = '', final = '';
+      for (const r of e.results) r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript);
+      this.txEl.textContent = final || interim;
+      if (final) { this.recog.stop(); this._onFinal(final.trim()); }
+    };
+
+    this.recog.onerror = (e) => { this._setStatus(`Error: ${e.error}`, 'pink'); this.stopListening(); };
+    this.recog.onend = () => { if (this.isListening) this.stopListening(); };
+    this.recog.start();
+  }
+
+  stopListening() {
+    this.isListening = false;
+    this.recog?.abort();
+    this.recog = null;
+    this._stopMic();
+    this.core?.classList.remove('listening');
+    if (this.core) this.core.style.transform = '';
+    this.micBtn?.classList.remove('active-mic');
+    if (this.micBtn) this.micBtn.textContent = '🎙 START LISTENING';
+  }
+
+  _stopMic() {
+    this.micStream?.getTracks().forEach(t => t.stop());
+    this.micStream = null;
+    this._stopAudioViz();
+    if (this.audioCtx) { this.audioCtx.close(); this.audioCtx = null; }
+  }
+
+  _startAudioViz() {
+    const buf = new Uint8Array(this.analyser.frequencyBinCount);
+    const tick = () => {
+      this.rafId = requestAnimationFrame(tick);
+      this.analyser.getByteFrequencyData(buf);
+      const avg = buf.reduce((a, v) => a + v, 0) / buf.length;
+      const scale = 1 + (avg / 255) * 0.55;
+      if (this.core) this.core.style.transform = `scale(${scale.toFixed(3)})`;
+    };
+    tick();
+  }
+
+  _stopAudioViz() {
+    cancelAnimationFrame(this.rafId);
+    this.rafId = null;
+  }
+
+  async _onFinal(text) {
+    if (!text) return;
+    this.stopListening();
+    this._setStatus('Thinking...', 'purple');
+    const stored = localStorage.getItem('kpi_user');
+    const user = stored ? JSON.parse(stored) : {};
+    try {
+      const res = await fetch('http://localhost:8000/api/neural-live', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: text, user_id: user.email?.split('@')[0] || 'user', role: user.role || 'student' })
+      });
+      const data = await res.json();
+      const reply = data.response || 'Sorry, I could not get a response. Please try again.';
+      this.txEl.textContent = reply;
+      this._speak(reply);
+    } catch (e) {
+      this._setStatus('Network error — backend unreachable', 'pink');
+    }
+  }
+
+  _speak(text) {
+    window.speechSynthesis?.cancel();
+    this._setStatus('Neural Live is speaking...', 'purple');
+    this.core?.classList.add('speaking');
+    this.core?.classList.remove('listening');
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1.0; utt.pitch = 1.05; utt.volume = 1.0;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => /Samantha|Female|Google UK|Zira/i.test(v.name)) || voices[0];
+    if (preferred) utt.voice = preferred;
+    utt.onend = () => {
+      this.core?.classList.remove('speaking');
+      this._setStatus('Tap the orb to speak again', 'cyan');
+    };
+    window.speechSynthesis.speak(utt);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => { window._neuralLive = new NeuralLive(); }, 600);
+});
