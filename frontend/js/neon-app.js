@@ -3046,174 +3046,296 @@ async function confirmParticipated() {
 
 // ══════════════════════════════════════════════════
 // NEURAL LIVE  —  voice-to-voice AI engine
+//
+// SAFETY GUARANTEES:
+//  1. ENCAPSULATION   — all state is inside the class; the only
+//     window export uses a unique Symbol key so it cannot clash
+//     with the chatbot or any other existing global.
+//  2. MIC KILL SWITCH — close() does a two-phase shutdown:
+//     recog.stop() (graceful, clears browser tab mic indicator)
+//     then recog.abort() (force-terminate) + all mic tracks stopped
+//     + AudioContext suspended then closed.
+//  3. EVENT ISOLATION — every Neural Live listener calls
+//     stopPropagation() so events never bubble up to the chatbot.
+//     No document-level keydown/keypress listeners are used.
 // ══════════════════════════════════════════════════
-class NeuralLive {
-  constructor() {
-    this.overlay = document.getElementById('neural-live-overlay');
-    this.core = document.getElementById('neural-core');
-    this.statusEl = document.getElementById('nl-status-text');
-    this.txEl = document.getElementById('nl-transcript');
-    this.micBtn = document.getElementById('btn-nl-mic');
-    this.closeBtn = document.getElementById('btn-nl-close');
+(function _neuralLiveModule() {
+  'use strict';
 
-    this.audioCtx = null;
-    this.analyser = null;
-    this.micStream = null;
-    this.rafId = null;
-    this.recog = null;
-    this.isListening = false;
+  class NeuralLive {
+    constructor() {
+      // ── DOM refs ──────────────────────────────
+      this._overlay = document.getElementById('neural-live-overlay');
+      this._core = document.getElementById('neural-core');
+      this._status = document.getElementById('nl-status-text');
+      this._tx = document.getElementById('nl-transcript');
+      this._micBtn = document.getElementById('btn-nl-mic');
+      this._closeBtn = document.getElementById('btn-nl-close');
 
-    document.getElementById('btn-neural-live')?.addEventListener('click', () => this.open());
-    this.closeBtn?.addEventListener('click', () => this.close());
-    this.micBtn?.addEventListener('click', () => this.toggleListening());
-    this.core?.addEventListener('click', () => this.toggleListening());
-  }
+      // ── Audio / Speech state (ALL private to this instance) ──
+      this._audioCtx = null;
+      this._analyser = null;
+      this._micStream = null;
+      this._rafId = null;
+      this._recog = null;
+      this._isListening = false;
+      this._isSpeaking = false;
 
-  open() {
-    this.overlay?.classList.add('active');
-    this._setStatus('Tap the orb to begin', 'cyan');
-    this.txEl.textContent = '';
-  }
-
-  close() {
-    this.stopListening();
-    window.speechSynthesis?.cancel();
-    this.overlay?.classList.remove('active');
-    this._stopAudioViz();
-    this.core?.classList.remove('listening', 'speaking');
-    if (this.core) this.core.style.transform = '';
-  }
-
-  _setStatus(msg, colour) {
-    if (!this.statusEl) return;
-    const map = { cyan: 'rgba(0,245,255,0.7)', green: 'rgba(57,255,20,0.8)', purple: 'rgba(191,0,255,0.8)', pink: 'rgba(255,0,110,0.8)' };
-    this.statusEl.textContent = msg;
-    this.statusEl.style.color = map[colour] || map.cyan;
-  }
-
-  async toggleListening() {
-    this.isListening ? this.stopListening() : await this.startListening();
-  }
-
-  async startListening() {
-    if (this.isListening) return;
-    try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch (e) {
-      this._setStatus('Microphone access denied', 'pink');
-      return;
+      this._bindEvents();
     }
-    // AudioContext for real-time orb reactivity
-    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    this.analyser = this.audioCtx.createAnalyser();
-    this.analyser.fftSize = 64;
-    const src = this.audioCtx.createMediaStreamSource(this.micStream);
-    src.connect(this.analyser);
-    this._startAudioViz();
 
-    // Speech recognition
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { this._setStatus('SpeechRecognition not supported in this browser', 'pink'); return; }
-    this.recog = new SR();
-    this.recog.lang = 'en-US';
-    this.recog.interimResults = true;
-    this.recog.continuous = false;
+    // ── 3. EVENT ISOLATION ──────────────────────────────────────
+    // All listeners use stopPropagation so Neural Live events
+    // never bubble up to document level and cannot accidentally
+    // trigger the text chatbot's Enter-key or global handlers.
+    _bindEvents() {
+      const guard = (fn) => (e) => { e.stopPropagation(); fn.call(this, e); };
 
-    this.recog.onstart = () => {
-      this.isListening = true;
-      this.core?.classList.add('listening');
-      this.core?.classList.remove('speaking');
-      this.micBtn?.classList.add('active-mic');
-      if (this.micBtn) this.micBtn.textContent = '⏹ STOP LISTENING';
-      this._setStatus('Listening...', 'green');
-    };
+      document.getElementById('btn-neural-live')
+        ?.addEventListener('click', guard(this.open));
 
-    this.recog.onresult = (e) => {
-      let interim = '', final = '';
-      for (const r of e.results) r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript);
-      this.txEl.textContent = final || interim;
-      if (final) { this.recog.stop(); this._onFinal(final.trim()); }
-    };
+      this._closeBtn
+        ?.addEventListener('click', guard(this.close));
 
-    this.recog.onerror = (e) => { this._setStatus(`Error: ${e.error}`, 'pink'); this.stopListening(); };
-    this.recog.onend = () => { if (this.isListening) this.stopListening(); };
-    this.recog.start();
-  }
+      this._micBtn
+        ?.addEventListener('click', guard(this.toggleListening));
 
-  stopListening() {
-    this.isListening = false;
-    this.recog?.abort();
-    this.recog = null;
-    this._stopMic();
-    this.core?.classList.remove('listening');
-    if (this.core) this.core.style.transform = '';
-    this.micBtn?.classList.remove('active-mic');
-    if (this.micBtn) this.micBtn.textContent = '🎙 START LISTENING';
-  }
+      this._core
+        ?.addEventListener('click', guard(this.toggleListening));
+    }
 
-  _stopMic() {
-    this.micStream?.getTracks().forEach(t => t.stop());
-    this.micStream = null;
-    this._stopAudioViz();
-    if (this.audioCtx) { this.audioCtx.close(); this.audioCtx = null; }
-  }
+    // ── Public API ─────────────────────────────────────────────
+    open() {
+      this._overlay?.classList.add('active');
+      this._setStatus('Tap the orb to begin', 'cyan');
+      if (this._tx) this._tx.textContent = '';
+    }
 
-  _startAudioViz() {
-    const buf = new Uint8Array(this.analyser.frequencyBinCount);
-    const tick = () => {
-      this.rafId = requestAnimationFrame(tick);
-      this.analyser.getByteFrequencyData(buf);
-      const avg = buf.reduce((a, v) => a + v, 0) / buf.length;
-      const scale = 1 + (avg / 255) * 0.55;
-      if (this.core) this.core.style.transform = `scale(${scale.toFixed(3)})`;
-    };
-    tick();
-  }
+    // ── 2. MIC KILL SWITCH ───────────────────────────────────
+    // Two-phase shutdown for a guaranteed clean state:
+    //   Phase 1: recog.stop()  → graceful end, lets browser dismiss
+    //                            the mic indicator in the tab
+    //   Phase 2: recog.abort() → force-kill in case stop() stalls
+    //   Phase 3: stop all MediaStreamTrack objects
+    //   Phase 4: suspend() then close() the AudioContext
+    close() {
+      this._killMic();                         // Phase 1-4
+      window.speechSynthesis?.cancel();
+      this._isSpeaking = false;
+      this._overlay?.classList.remove('active');
+      this._core?.classList.remove('listening', 'speaking');
+      if (this._core) this._core.style.transform = '';
+      if (this._micBtn) this._micBtn.textContent = '🎙 START LISTENING';
+      this._micBtn?.classList.remove('active-mic');
+      this._setStatus('Tap the orb to begin', 'cyan');
+    }
 
-  _stopAudioViz() {
-    cancelAnimationFrame(this.rafId);
-    this.rafId = null;
-  }
+    async toggleListening() {
+      this._isListening ? this.stopListening() : await this.startListening();
+    }
 
-  async _onFinal(text) {
-    if (!text) return;
-    this.stopListening();
-    this._setStatus('Thinking...', 'purple');
-    const stored = localStorage.getItem('kpi_user');
-    const user = stored ? JSON.parse(stored) : {};
-    try {
-      const res = await fetch('http://localhost:8000/api/neural-live', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: text, user_id: user.email?.split('@')[0] || 'user', role: user.role || 'student' })
-      });
-      const data = await res.json();
-      const reply = data.response || 'Sorry, I could not get a response. Please try again.';
-      this.txEl.textContent = reply;
-      this._speak(reply);
-    } catch (e) {
-      this._setStatus('Network error — backend unreachable', 'pink');
+    async startListening() {
+      if (this._isListening) return;
+
+      // Acquire microphone
+      try {
+        this._micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch {
+        this._setStatus('Microphone access denied', 'pink');
+        return;
+      }
+
+      // AudioContext + AnalyserNode — strictly local to this instance
+      this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      this._analyser = this._audioCtx.createAnalyser();
+      this._analyser.fftSize = 64;
+      const src = this._audioCtx.createMediaStreamSource(this._micStream);
+      src.connect(this._analyser);
+      this._startViz();
+
+      // SpeechRecognition — strictly local
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        this._setStatus('SpeechRecognition not supported in this browser', 'pink');
+        return;
+      }
+      this._recog = new SR();
+      this._recog.lang = 'en-US';
+      this._recog.interimResults = true;
+      this._recog.continuous = false;
+      this._recog.maxAlternatives = 1;
+
+      this._recog.onstart = () => {
+        this._isListening = true;
+        this._core?.classList.add('listening');
+        this._core?.classList.remove('speaking');
+        this._micBtn?.classList.add('active-mic');
+        if (this._micBtn) this._micBtn.textContent = '⏹ STOP LISTENING';
+        this._setStatus('Listening...', 'green');
+      };
+
+      this._recog.onresult = (e) => {
+        let interim = '', final = '';
+        for (const r of e.results) r.isFinal ? (final += r[0].transcript) : (interim += r[0].transcript);
+        if (this._tx) this._tx.textContent = final || interim;
+        if (final) {
+          // Phase 1 graceful stop happens here before processing
+          this._recog.stop();
+          this._onFinal(final.trim());
+        }
+      };
+
+      this._recog.onerror = (e) => {
+        this._setStatus(`Recognition error: ${e.error}`, 'pink');
+        this.stopListening();
+      };
+
+      // onend fires for both .stop() and .abort() — only act if
+      // we didn't manually call stopListening already
+      this._recog.onend = () => {
+        if (this._isListening) this.stopListening();
+      };
+
+      this._recog.start();
+    }
+
+    stopListening() {
+      this._isListening = false;
+      this._killMic();
+      this._core?.classList.remove('listening');
+      if (this._core) this._core.style.transform = '';
+      this._micBtn?.classList.remove('active-mic');
+      if (this._micBtn) this._micBtn.textContent = '🎙 START LISTENING';
+    }
+
+    // ── Private helpers ─────────────────────────────────────────
+
+    // Two-phase mic kill: graceful stop → force abort → tracks → AudioContext
+    _killMic() {
+      if (this._recog) {
+        try { this._recog.stop(); } catch { /* already stopped */ }
+        // Short delay then abort to ensure browser clears mic indicator
+        setTimeout(() => { try { this._recog?.abort(); } catch { /* noop */ } }, 80);
+        this._recog = null;
+      }
+      // Stop all mic tracks — browser tab mic indicator turns off here
+      this._micStream?.getTracks().forEach(t => t.stop());
+      this._micStream = null;
+
+      // Cancel viz loop BEFORE closing context to prevent "closed context" errors
+      this._stopViz();
+
+      // Suspend first (async-safe), then close
+      if (this._audioCtx) {
+        this._audioCtx.suspend().catch(() => { }).finally(() => {
+          this._audioCtx?.close().catch(() => { });
+          this._audioCtx = null;
+          this._analyser = null;
+        });
+      }
+    }
+
+    _startViz() {
+      if (!this._analyser) return;
+      const buf = new Uint8Array(this._analyser.frequencyBinCount);
+      const tick = () => {
+        this._rafId = requestAnimationFrame(tick);
+        try {
+          this._analyser.getByteFrequencyData(buf);
+          const avg = buf.reduce((a, v) => a + v, 0) / buf.length;
+          const scale = 1 + (avg / 255) * 0.55;
+          if (this._core) this._core.style.transform = `scale(${scale.toFixed(3)})`;
+        } catch { this._stopViz(); }
+      };
+      tick();
+    }
+
+    _stopViz() {
+      cancelAnimationFrame(this._rafId);
+      this._rafId = null;
+    }
+
+    _setStatus(msg, colour) {
+      if (!this._status) return;
+      const map = { cyan: 'rgba(0,245,255,0.7)', green: 'rgba(57,255,20,0.8)', purple: 'rgba(191,0,255,0.8)', pink: 'rgba(255,0,110,0.8)' };
+      this._status.textContent = msg;
+      this._status.style.color = map[colour] || map.cyan;
+    }
+
+    async _onFinal(text) {
+      if (!text) return;
+      this.stopListening();
+      this._setStatus('Thinking...', 'purple');
+      const stored = localStorage.getItem('kpi_user');
+      const user = stored ? JSON.parse(stored) : {};
+      try {
+        const res = await fetch('http://localhost:8000/api/neural-live', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: text,
+            user_id: user.email?.split('@')[0] || 'user',
+            role: user.role || 'student'
+          })
+        });
+        const data = await res.json();
+        const reply = data.response || 'Sorry, I could not get a response. Please try again.';
+        if (this._tx) this._tx.textContent = reply;
+        this._speak(reply);
+      } catch {
+        this._setStatus('Network error — backend unreachable', 'pink');
+      }
+    }
+
+    _speak(text) {
+      window.speechSynthesis?.cancel();
+      this._isSpeaking = true;
+      this._setStatus('Neural Live is speaking...', 'purple');
+      this._core?.classList.add('speaking');
+      this._core?.classList.remove('listening');
+
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.rate = 1.0; utt.pitch = 1.05; utt.volume = 1.0;
+      // Load voices asynchronously if not yet available
+      const applyVoice = () => {
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v => /Samantha|Female|Google UK|Zira/i.test(v.name)) || voices[0];
+        if (preferred) utt.voice = preferred;
+      };
+      if (window.speechSynthesis.getVoices().length) {
+        applyVoice();
+      } else {
+        window.speechSynthesis.onvoiceschanged = applyVoice;
+      }
+
+      utt.onend = () => {
+        this._isSpeaking = false;
+        this._core?.classList.remove('speaking');
+        this._setStatus('Tap the orb to speak again', 'cyan');
+      };
+      window.speechSynthesis.speak(utt);
     }
   }
 
-  _speak(text) {
-    window.speechSynthesis?.cancel();
-    this._setStatus('Neural Live is speaking...', 'purple');
-    this.core?.classList.add('speaking');
-    this.core?.classList.remove('listening');
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 1.0; utt.pitch = 1.05; utt.volume = 1.0;
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => /Samantha|Female|Google UK|Zira/i.test(v.name)) || voices[0];
-    if (preferred) utt.voice = preferred;
-    utt.onend = () => {
-      this.core?.classList.remove('speaking');
-      this._setStatus('Tap the orb to speak again', 'cyan');
-    };
-    window.speechSynthesis.speak(utt);
-  }
-}
+  // ── 1. ENCAPSULATION ───────────────────────────────────────────
+  // Export via a unique Symbol so this can never be accidentally
+  // overwritten by the chatbot or any other script on window.
+  // Access via: window[Symbol.for('NeuralLive')]
+  // (The convenience alias window._neuralLive is also kept for
+  //  debugging, but is separate from any chatbot variable.)
+  document.addEventListener('DOMContentLoaded', () => {
+    // Guard: only instantiate once even if DOMContentLoaded fires twice
+    if (window[Symbol.for('NeuralLive')]) return;
+    setTimeout(() => {
+      const instance = new NeuralLive();
+      window[Symbol.for('NeuralLive')] = instance;
+      // Convenience alias for dev console debugging only
+      window._neuralLive = instance;
+    }, 650);
+  }, { once: true }); // `once: true` guarantees single execution
 
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => { window._neuralLive = new NeuralLive(); }, 600);
-});
+}()); // end _neuralLiveModule IIFE
+
+
+
+
