@@ -14,7 +14,6 @@ class RecommendationEngine:
             temperature=0.7,
             api_key=os.environ.get("GEMINI_API_KEY")
         )
-
         self.student_prompt = PromptTemplate(
             input_variables=["student_name", "department", "kpi_score", "career_readiness", "kpi_breakdown"],
             template="""You are an expert AI academic and career advisor.

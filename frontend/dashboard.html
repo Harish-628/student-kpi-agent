@@ -1530,19 +1530,32 @@
                         </div>
                     </div>
 
-                    <div class="charts-row">
-                        <div class="chart-card">
-                            <div class="chart-card-header">
-                                <span class="chart-card-title">My KPI Breakdown</span>
+                    <!-- Left: stacked Radar + Bar chart | Right: AI Coach -->
+                    <div style="display: flex; gap: 20px; align-items: flex-start;">
+
+                        <!-- Left column: Radar + KPI bar -->
+                        <div style="display: flex; flex-direction: column; gap: 20px; flex: 1; min-width: 0;">
+                            <div class="chart-card">
+                                <div class="chart-card-header">
+                                    <span class="chart-card-title">My KPI Breakdown</span>
+                                </div>
+                                <div class="chart-wrapper"
+                                    style="position: relative; height: 220px; width: 100%; display: flex; justify-content: center; align-items: center;">
+                                    <canvas id="studentRadarChart"></canvas>
+                                </div>
                             </div>
-                            <div class="chart-wrapper"
-                                style="position: relative; height: 380px; width: 100%; display: flex; justify-content: center; align-items: center;">
-                                <canvas id="studentRadarChart"></canvas>
+                            <div class="chart-card">
+                                <div class="chart-card-header">
+                                    <span class="chart-card-title">📊 My KPI vs Department Average</span>
+                                </div>
+                                <div class="chart-wrapper" style="height: 220px;">
+                                    <canvas id="studentHBarChart"></canvas>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- AI Career Coach Recommendations -->
-                        <div class="chart-card" style="display: flex; flex-direction: column;">
+                        <!-- Right column: AI Career Coach -->
+                        <div class="chart-card" style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
                             <div class="chart-card-header">
                                 <span class="chart-card-title">🤖 AI Career Coach Recommendations</span>
                             </div>
@@ -1571,8 +1584,7 @@
                                     style="background: rgba(255, 0, 110, 0.05); border-left: 4px solid var(--neon-pink); --c1: #cc0055; --c2: #ff006e; padding: 16px;">
                                     <div style="font-size: 1.2rem; margin-bottom: 8px;">🚀 Action Plan</div>
                                     <div id="aiActionPlan" style="font-size: 0.9rem; color: #c8e8ff; line-height: 1.4;">
-                                        Formulating your
-                                        next steps...</div>
+                                        Formulating your next steps...</div>
                                 </div>
                             </div>
                         </div>

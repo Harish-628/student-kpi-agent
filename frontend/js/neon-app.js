@@ -186,13 +186,9 @@ async function fetchEnrichedData() {
     // Re-render UI components now that we have data
     if (typeof renderStudentsTable === 'function') renderStudentsTable();
     if (typeof initDashboardStats === 'function') initDashboardStats();
+    if (typeof populateKPIDropdown === 'function') populateKPIDropdown();
+    if (typeof initDashboardCharts === 'function') initDashboardCharts();
     if (document.getElementById('section-kpi')?.classList.contains('active')) loadStudentKPI();
-
-    // Refresh student dropdown selection if they are on student pages
-    const isStudent = userInfo && userInfo.role === 'student';
-    if (isStudent && ENRICHED.length > 0) {
-      if (typeof initDashboardCharts === 'function') initDashboardCharts();
-    }
   } catch (error) {
     console.error("Falling back to static ENRICHED data:", error);
     // Fallback to old behavior if API lacks data or fails
@@ -206,6 +202,8 @@ async function fetchEnrichedData() {
 
     if (typeof renderStudentsTable === 'function') renderStudentsTable();
     if (typeof initDashboardStats === 'function') initDashboardStats();
+    if (typeof populateKPIDropdown === 'function') populateKPIDropdown();
+    if (typeof initDashboardCharts === 'function') initDashboardCharts();
   }
 }
 
@@ -536,6 +534,13 @@ function animCounter(el, target, dur = 1200, isFloat = false) {
 let radarChart, doughnutChart, barChart, lineChart;
 
 function initDashboardCharts() {
+  // Destroy existing chart instances to prevent "Canvas already in use" errors on re-render
+  [radarChart, doughnutChart, barChart, lineChart].forEach(c => c?.destroy());
+  radarChart = doughnutChart = barChart = lineChart = null;
+  // Also destroy student radar chart if it exists on the canvas
+  const _srcv = document.getElementById('studentRadarChart');
+  if (_srcv) { const _sInst = Chart.getChart(_srcv); if (_sInst) _sInst.destroy(); }
+
   if (userInfo && userInfo.role === 'student' && userInfo.email) {
     const sId = userInfo.email.split('@')[0].toUpperCase();
     const studentInfo = ENRICHED.find(s => s.id === sId);
@@ -628,9 +633,44 @@ function initDashboardCharts() {
           },
         }
       });
+
+      // ── My KPI vs Dept Average horizontal bar chart ──
+      const hBarCtx = document.getElementById('studentHBarChart');
+      if (hBarCtx) {
+        const existingHBar = Chart.getChart(hBarCtx);
+        if (existingHBar) existingHBar.destroy();
+        const hFields = ['internships', 'certifications', 'hackathons', 'publications', 'workshops', 'projects', 'club_activities', 'industrial_visits'];
+        const hLabels = ['Internships', 'Certifications', 'Hackathons', 'Publications', 'Workshops', 'Projects', 'Club', 'Ind. Visits'];
+        const myValsH = hFields.map(f => studentInfo.kpi[f] || 0);
+        const deptPeersH = ENRICHED.filter(s => s.dept === studentInfo.dept && s.id !== studentInfo.id);
+        const deptAvgH = hFields.map(f => deptPeersH.length > 0
+          ? parseFloat((deptPeersH.reduce((a, s) => a + (s.kpi[f] || 0), 0) / deptPeersH.length).toFixed(1))
+          : 0);
+        new Chart(hBarCtx, {
+          type: 'bar',
+          data: {
+            labels: hLabels,
+            datasets: [
+              { label: 'You', data: myValsH, backgroundColor: 'rgba(0,245,255,0.65)', borderColor: '#00f5ff', borderWidth: 1.5, borderRadius: 5 },
+              { label: 'Dept Avg', data: deptAvgH, backgroundColor: 'rgba(191,0,255,0.35)', borderColor: '#bf00ff', borderWidth: 1.5, borderRadius: 5 }
+            ]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: 'rgba(120,180,220,0.8)', font: { size: 11 } } } },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: 'rgba(120,180,220,0.7)', font: { size: 10 } } },
+              y: { grid: { color: 'rgba(0,245,255,0.06)' }, ticks: { color: 'rgba(120,180,220,0.7)' }, beginAtZero: true }
+            }
+          }
+        });
+      }
       return;
     }
   }
+
+  // Guard: no data yet — charts will be re-initialized by fetchEnrichedData when data arrives
+  if (ENRICHED.length === 0) return;
 
   // KPI Radar - avg across all students
   const fields = ['internships', 'certifications', 'hackathons', 'publications', 'workshops', 'projects', 'club_activities', 'industrial_visits'];
@@ -792,8 +832,10 @@ function initDashboardCharts() {
 
   // Trend Line Chart (simulated monthly data)
   const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'];
-  const baseScore = ENRICHED.reduce((a, s) => a + s.score, 0) / ENRICHED.length;
-  const trendData = months.map((_, i) => parseFloat((baseScore - 8 + i * 1.5 + (Math.random() - 0.5) * 2).toFixed(1)));
+  // Use at least 55 as baseline so data is always visible even when API scores are zero
+  const rawBase = ENRICHED.length > 0 ? ENRICHED.reduce((a, s) => a + s.score, 0) / ENRICHED.length : 60;
+  const baseScore = Math.max(55, rawBase);
+  const trendData = months.map((_, i) => Math.max(0, parseFloat((baseScore - 8 + i * 1.5 + (Math.random() - 0.5) * 2).toFixed(1))));
 
   lineChart = new Chart(document.getElementById('chartLine'), {
     type: 'line',
@@ -824,7 +866,7 @@ function initDashboardCharts() {
       plugins: { legend: { labels: { color: 'rgba(120,180,220,0.7)', font: { size: 11 } } } },
       scales: {
         x: { grid: { color: 'rgba(0,245,255,0.05)' }, ticks: { color: 'rgba(120,180,220,0.7)' } },
-        y: { grid: { color: 'rgba(0,245,255,0.06)' }, ticks: { color: 'rgba(120,180,220,0.7)' }, min: 40, max: 100 }
+        y: { grid: { color: 'rgba(0,245,255,0.06)' }, ticks: { color: 'rgba(120,180,220,0.7)' }, min: 0, max: 100 }
       }
     }
   });
@@ -882,6 +924,8 @@ function viewStudentKPI(id) {
 function populateKPIDropdown() {
   const sel = document.getElementById('kpiStudentSelect');
   if (!sel) return;
+  // Clear any previously appended options (keep only the default placeholder)
+  sel.innerHTML = '<option value="">— Select Student —</option>';
   ENRICHED.forEach(s => {
     const o = document.createElement('option');
     o.value = s.id; o.textContent = `${s.name} (${s.id})`;
