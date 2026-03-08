@@ -17,29 +17,45 @@ echo ========================================
 echo   NeuralKPI — Starting All Servers
 echo ========================================
 echo.
-REM Check Python
+
+REM 1. Check Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Python not found. Install from https://www.python.org
+    echo ERROR: Python not found. Please install Python from https://www.python.org
     pause
     exit /b 1
 )
-echo [OK] Python found
+echo [OK] Python found.
 
-REM Install dependencies if fastapi is missing
+REM 2. Check and Activate Virtual Environment
+if exist "%ROOT%\venv\Scripts\activate.bat" (
+    echo [OK] Found virtual environment. Activating...
+    call "%ROOT%\venv\Scripts\activate.bat"
+) else (
+    echo [!] Virtual environment (venv) not found. Using system Python...
+)
+
+REM 3. Install/Check Dependencies
+echo Checking dependencies...
 pip show fastapi >nul 2>&1
 if errorlevel 1 (
-    echo Installing dependencies ^(first run only^)...
+    echo [!] Dependencies missing. Installing...
     pip install -r requirements.txt
 )
-echo [OK] Dependencies ready
+echo [OK] Dependencies ready.
 
+REM 4. Database Migration (Conditional)
 echo.
-echo Running OD database migration...
-python migrate_od.py
+if exist "migrate_od.py" (
+    echo [OK] Running OD database migration...
+    python migrate_od.py
+) else (
+    echo [i] Skipping OD migration (migrate_od.py not found).
+)
 echo.
 
-REM Kill anything on port 8000 or 8080
+REM 5. Cleanup existing processes on ports 8000 and 8080
+echo Cleaning up existing processes...
 for /f "tokens=5" %%a in ('netstat -aon ^| find ":8000 "') do (
     taskkill /F /PID %%a >nul 2>&1
 )
@@ -47,29 +63,31 @@ for /f "tokens=5" %%a in ('netstat -aon ^| find ":8080 "') do (
     taskkill /F /PID %%a >nul 2>&1
 )
 
-echo Starting Backend API  ^(port 8000^)...
-start "NeuralKPI - Backend" cmd /k "cd /d %ROOT% && python -m uvicorn backend.main:app --reload --port 8000"
+REM 6. Start Servers
+echo Starting Backend API (port 8000)...
+start "NeuralKPI - Backend" cmd /k "cd /d %ROOT% && call venv\Scripts\activate.bat 2>nul && python -m uvicorn backend.main:app --reload --port 8000"
 
-echo Waiting for backend to start...
-timeout /t 4 /nobreak >nul
+echo Waiting for backend...
+timeout /t 3 /nobreak >nul
 
-echo Starting Frontend Server ^(port 8080^)...
+echo Starting Frontend Server (port 8080)...
 start "NeuralKPI - Frontend" cmd /k "cd /d %ROOT%\frontend && python -m http.server 8080"
 
 timeout /t 2 /nobreak >nul
 
+REM 7. Launch Dashboard
 echo Opening browser...
 start http://localhost:8080/dashboard.html
 
 echo.
 echo ========================================
-echo   All servers started!
+echo   STATUS: ALL SYSTEMS GO
 echo ========================================
 echo.
 echo   Dashboard:   http://localhost:8080/dashboard.html
 echo   API Docs:    http://localhost:8000/docs
-echo   API Health:  http://localhost:8000/
 echo.
-echo   Close the "Backend" and "Frontend" windows to stop servers.
+echo   NOTE: Please keep the Backend and Frontend 
+echo   command windows open while using the app.
 echo.
 pause
