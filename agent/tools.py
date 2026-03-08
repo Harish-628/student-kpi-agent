@@ -13,7 +13,8 @@ def get_password_hash(password):
 def get_top_students(department: Optional[str] = None) -> str:
     """
     Get the top 5 students with the highest KPI scores from the database.
-    Optionally filter by department.
+    Optionally filter by department. Use this when asked about top performers,
+    best students, highest scorers, or who is doing well.
     """
     db = SessionLocal()
     try:
@@ -40,6 +41,40 @@ def get_top_students(department: Optional[str] = None) -> str:
     finally:
         db.close()
 
+
+@tool
+def get_lowest_students(department: Optional[str] = None) -> str:
+    """
+    Get the bottom 5 students with the LOWEST KPI scores from the database.
+    Optionally filter by department. Use this when asked about lowest performers,
+    students who need help, students at risk, who is struggling, or worst scores.
+    Faculty and HOD should always pass their department here.
+    """
+    db = SessionLocal()
+    try:
+        query = db.query(Student, Score).join(Score, Student.student_id == Score.student_id)
+
+        if department and department.strip():
+            query = query.filter(Student.department.ilike(f"%{department}%"))
+
+        results = query.order_by(Score.kpi_score.asc()).limit(5).all()
+
+        if not results:
+            return f"No students found in the database for department: {department or 'All'}."
+
+        scope = department or 'All Departments'
+        response_lines = [f"⚠️ Students Needing Support ({scope}):"]
+        for idx, (student, score) in enumerate(results, 1):
+            response_lines.append(
+                f"{idx}. {student.name} ({student.student_id}) - {student.department} | "
+                f"Score: {score.kpi_score:.1f}/100 | Readiness: {score.career_readiness_score}"
+            )
+
+        return "\n".join(response_lines)
+    except Exception as e:
+        return f"Error retrieving students from database: {str(e)}"
+    finally:
+        db.close()
 
 
 @tool
