@@ -3274,7 +3274,7 @@ async function confirmParticipated() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             query: text,
-            user_id: user.email?.split('@')[0] || 'user',
+            user_id: user.email || 'user',
             role: user.role || 'student'
           })
         });

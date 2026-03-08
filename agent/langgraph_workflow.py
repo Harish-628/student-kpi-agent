@@ -42,17 +42,22 @@ def inject_live_kpi_context_node(state: AgentState):
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.email == state["user_email"]).first()
-        dept = user.department if user and user.department else None
+        if not user:
+            print(f"[LangGraph WARNING] User not found for email: '{state['user_email']}'. Data injection may be incomplete.")
+            dept = None
+        else:
+            dept = user.department
+            print(f"[LangGraph] User found: {user.name} ({user.role}) in {dept or 'No Dept'}")
 
         role = state.get("user_role", "student")
         live_data = "\n\n--- AUTO-INJECTED LIVE KPI DATA ---\n"
 
         if role == "admin":
-            live_data += get_top_students(None) + "\n\n" + get_lowest_students(None)
+            live_data += get_top_students.invoke({"department": None}) + "\n\n" + get_lowest_students.invoke({"department": None})
         elif role in ["faculty", "hod"]:
-            live_data += get_top_students(dept) + "\n\n" + get_lowest_students(dept)
+            live_data += get_top_students.invoke({"department": dept}) + "\n\n" + get_lowest_students.invoke({"department": dept})
         elif role == "student":
-            live_data += get_top_students(None)
+            live_data += get_top_students.invoke({"department": None})
 
         state["context"] = str(state.get("context", "")) + live_data
         print(f"[LangGraph] Injected live KPI context for role {role}")
