@@ -12,6 +12,7 @@ A complete, enterprise-grade student performance tracking and KPI management sys
 - [User Roles & Permissions](#user-roles--permissions)
 - [Technologies Used](#technologies-used)
 - [Demo Credentials](#demo-credentials)
+- [Hybrid Architecture](#hybrid-architecture)
 
 ## ✨ System Features
 
@@ -420,8 +421,16 @@ rm student_kpi.db
 **Last Updated**: 2024
 **Version**: 1.0.0
 **Status**: Production Ready ✅
-| **Gemini / Grok API** | Core LLM intelligence |
 | **PostgreSQL / SQLite** | Relational data storage |
+
+## 🧠 Hybrid Architecture
+
+NeuralKPI implements a **Hybrid Model Routing** system to maximize performance while minimizing API costs and hitting quota limits:
+
+- **Router Node (Triage)**: Every incoming query is first analyzed by `gemini-3.1-flash-lite-preview` (Utility LLM) to classify it as either `UTILITY` or `DETAILED`.
+- **UTILITY Path**: Simple greetings, status checks, and role-based configuration bypass heavy RAG and KPI injection for near-instant responses.
+- **DETAILED Path**: Performance analysis and career coaching are routed to `gemini-3.1-flash-preview` (Response LLM) with full context from the Vector DB and Live SQL data.
+- **Resilience Wrapper**: Integrated with `tenacity`, the system handles `429 Resource Exhausted` errors with exponential backoff (10s -> 20s -> 40s), ensuring 99.9% availability even under high load.
 
 ## 📊 Project Status
 

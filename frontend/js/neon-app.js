@@ -3071,6 +3071,9 @@ async function confirmParticipated() {
       this._tx = document.getElementById('nl-transcript');
       this._micBtn = document.getElementById('btn-nl-mic');
       this._closeBtn = document.getElementById('btn-nl-close');
+      this._txtFallback = document.getElementById('nl-text-fallback');
+      this._txtInput = document.getElementById('nl-text-input');
+      this._txtSubmit = document.getElementById('nl-text-submit');
 
       // ── Audio / Speech state (ALL private to this instance) ──
       this._audioCtx = null;
@@ -3102,6 +3105,28 @@ async function confirmParticipated() {
 
       this._core
         ?.addEventListener('click', guard(this.toggleListening));
+
+      this._txtSubmit
+        ?.addEventListener('click', guard(this._submitText));
+
+      this._txtInput
+        ?.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') this._submitText(e);
+        });
+    }
+
+    _submitText(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const text = this._txtInput?.value.trim();
+      if (!text) return;
+
+      if (this._txtFallback) this._txtFallback.style.display = 'none';
+      if (this._micBtn) this._micBtn.style.display = 'inline-block';
+      if (this._txtInput) this._txtInput.value = '';
+      if (this._tx) this._tx.textContent = text;
+
+      this._onFinal(text);
     }
 
     // ── Public API ─────────────────────────────────────────────
@@ -3125,8 +3150,13 @@ async function confirmParticipated() {
       this._overlay?.classList.remove('active');
       this._core?.classList.remove('listening', 'speaking');
       if (this._core) this._core.style.transform = '';
-      if (this._micBtn) this._micBtn.textContent = '🎙 START LISTENING';
+      if (this._micBtn) {
+        this._micBtn.textContent = '🎙 START LISTENING';
+        this._micBtn.style.display = 'inline-block';
+      }
       this._micBtn?.classList.remove('active-mic');
+      if (this._txtFallback) this._txtFallback.style.display = 'none';
+      if (this._txtInput) this._txtInput.value = '';
       this._setStatus('Tap the orb to begin', 'cyan');
     }
 
@@ -3186,7 +3216,15 @@ async function confirmParticipated() {
       };
 
       this._recog.onerror = (e) => {
-        this._setStatus(`Recognition error: ${e.error}`, 'pink');
+        if (e.preventDefault) e.preventDefault();
+        if (e.error === 'network' || e.error === 'not-allowed') {
+          this._setStatus(e.error === 'network' ? 'Network error. Please type.' : 'Mic access denied. Please type.', 'pink');
+          if (this._txtFallback) this._txtFallback.style.display = 'block';
+          if (this._micBtn) this._micBtn.style.display = 'none';
+          if (this._txtInput) setTimeout(() => this._txtInput.focus(), 100);
+        } else {
+          this._setStatus(`Recognition error: ${e.error}`, 'pink');
+        }
         this.stopListening();
       };
 
@@ -3279,7 +3317,25 @@ async function confirmParticipated() {
           })
         });
         const data = await res.json();
-        const reply = data.response || 'Sorry, I could not get a response. Please try again.';
+        let reply = data.response || 'Sorry, I could not get a response. Please try again.';
+
+        // Detect and handle JSON Modal Triggers
+        const modalMatch = reply.match(/\{"action":\s*"OPEN_MODAL",\s*"target_id":\s*"od_(\d+)"\}/);
+        if (modalMatch) {
+          const odId = parseInt(modalMatch[1]);
+          reply = reply.replace(modalMatch[0], '').trim();
+
+          // Auto open the modal
+          fetch(`${API}/od/${odId}`)
+            .then(r => r.json())
+            .then(od => {
+              if (od && !od.detail && typeof openODDetailModal === 'function') {
+                openODDetailModal(od);
+              }
+            })
+            .catch(e => console.error("Auto-modal trigger failed:", e));
+        }
+
         if (this._tx) this._tx.textContent = reply;
         this._speak(reply);
       } catch (err) {

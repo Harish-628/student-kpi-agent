@@ -495,7 +495,7 @@
       display: inline-flex;
       flex-direction: column;
       align-items: center;
-      width: 160px;
+      width: 280px;
       margin-right: 20px;
       padding: 15px;
       background: rgba(0, 245, 255, 0.05);
@@ -514,9 +514,9 @@
     }
 
     .winner-photo {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
+      width: 250px;
+      height: 140px;
+      border-radius: 8px;
       object-fit: cover;
       margin-bottom: 12px;
       border: 2px solid var(--neon-cyan);
@@ -578,15 +578,34 @@
       pointer-events: none;
     }
 
+    .nl-spinner-container {
+      position: relative;
+      width: 140px;
+      height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .nl-spinner {
-      width: 60px;
-      height: 60px;
-      border: 3px solid transparent;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 4px solid transparent;
       border-top-color: #00f3ff;
       border-right-color: #00f3ff;
       border-radius: 50%;
       animation: nl-spin 0.75s linear infinite;
       box-shadow: 0 0 18px #00f3ff80, 0 0 40px #00f3ff40;
+    }
+
+    .nl-spinner-img {
+      width: 95px;
+      height: auto;
+      z-index: 2;
+      animation: nl-pulse 2s ease-in-out infinite;
     }
 
     @keyframes nl-spin {
@@ -633,7 +652,10 @@
 <body>
   <!-- ══ GLOBAL NEON LOADING OVERLAY ══ -->
   <div id="neuralLoader">
-    <div class="nl-spinner"></div>
+    <div class="nl-spinner-container">
+      <div class="nl-spinner"></div>
+      <img src="pictures/k_logo.png" alt="Kongunadu College Logo" class="nl-spinner-img" />
+    </div>
     <h1 class="nl-logo">NEURALKPI</h1>
     <p class="nl-status" id="loaderStatus">Initializing System...</p>
   </div>
@@ -649,7 +671,7 @@
     <!-- ===== LEFT: LOGIN PANEL ===== -->
     <div class="login-panel animate-fade-in">
       <img src="pictures/new-logo1.png" alt="Kongunadu College Logo"
-        style="position: absolute; top: 30px; right: 30px; width: 120px; height: auto; z-index: 10;" />
+        style="position: absolute; top: 30px; right: 30px; width: 140px; height: auto; z-index: 10;" />
 
       <!-- Brand -->
       <div class="login-brand">
@@ -726,46 +748,30 @@
       <!-- Latest Prize Winners -->
       <div class="winners-marquee">
         <div class="winners-track">
-          <div class="winner-card"><img src="pictures/captian.jpg" class="winner-photo" alt="Team Avengers">
-            <div class="winner-event">Hackathon 2026</div>
-            <div class="winner-team">Team Avengers</div>
+          <div class="winner-card"><img src="assets/login_images/slide1.jpg" class="winner-photo" alt="Event Photo">
+            <div class="winner-event">End Semester Excellence</div>
+            <div class="winner-team">Top Performers Award</div>
           </div>
-          <div class="winner-card"><img src="pictures/iron-man.jpg" class="winner-photo" alt="Stark Industries">
-            <div class="winner-event">AI Challenge</div>
-            <div class="winner-team">Stark Industries</div>
+          <div class="winner-card"><img src="assets/login_images/slide2.jpg" class="winner-photo" alt="Event Photo">
+            <div class="winner-event">National Hackfest 2K26</div>
+            <div class="winner-team">First Prize Winners</div>
           </div>
-          <div class="winner-card"><img src="pictures/doc strange.jpg" class="winner-photo" alt="Mystic Coders">
-            <div class="winner-event">Data Science Cup</div>
-            <div class="winner-team">Mystic Coders</div>
-          </div>
-          <div class="winner-card"><img src="pictures/spiderman.jpg" class="winner-photo" alt="Web Slingers">
-            <div class="winner-event">Web Dev Clash</div>
-            <div class="winner-team">Web Slingers</div>
-          </div>
-          <div class="winner-card"><img src="pictures/thor.jpg" class="winner-photo" alt="Thunder Nodes">
-            <div class="winner-event">Cloud Summit</div>
-            <div class="winner-team">Thunder Nodes</div>
+          <div class="winner-card"><img src="assets/login_images/slide3.jpg" class="winner-photo" alt="Event Photo">
+            <div class="winner-event">Academic Achievers</div>
+            <div class="winner-team">Merit Certificate</div>
           </div>
           <!-- Duplicate for seamless loop -->
-          <div class="winner-card"><img src="pictures/captian.jpg" class="winner-photo" alt="Team Avengers">
-            <div class="winner-event">Hackathon 2026</div>
-            <div class="winner-team">Team Avengers</div>
+          <div class="winner-card"><img src="assets/login_images/slide1.jpg" class="winner-photo" alt="Event Photo">
+            <div class="winner-event">End Semester Excellence</div>
+            <div class="winner-team">Top Performers Award</div>
           </div>
-          <div class="winner-card"><img src="pictures/iron-man.jpg" class="winner-photo" alt="Stark Industries">
-            <div class="winner-event">AI Challenge</div>
-            <div class="winner-team">Stark Industries</div>
+          <div class="winner-card"><img src="assets/login_images/slide2.jpg" class="winner-photo" alt="Event Photo">
+            <div class="winner-event">National Hackfest 2K26</div>
+            <div class="winner-team">First Prize Winners</div>
           </div>
-          <div class="winner-card"><img src="pictures/doc strange.jpg" class="winner-photo" alt="Mystic Coders">
-            <div class="winner-event">Data Science Cup</div>
-            <div class="winner-team">Mystic Coders</div>
-          </div>
-          <div class="winner-card"><img src="pictures/spiderman.jpg" class="winner-photo" alt="Web Slingers">
-            <div class="winner-event">Web Dev Clash</div>
-            <div class="winner-team">Web Slingers</div>
-          </div>
-          <div class="winner-card"><img src="pictures/thor.jpg" class="winner-photo" alt="Thunder Nodes">
-            <div class="winner-event">Cloud Summit</div>
-            <div class="winner-team">Thunder Nodes</div>
+          <div class="winner-card"><img src="assets/login_images/slide3.jpg" class="winner-photo" alt="Event Photo">
+            <div class="winner-event">Academic Achievers</div>
+            <div class="winner-team">Merit Certificate</div>
           </div>
         </div>
       </div>
@@ -810,7 +816,7 @@
 
     // Page Load Logic: Wait 500ms then fade out
     window.addEventListener('load', () => {
-      setTimeout(hideLoader, 500);
+      setTimeout(hideLoader, 800);
     });
 
     // ---- Demo credential auto-fill ----

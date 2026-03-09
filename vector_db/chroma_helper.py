@@ -4,7 +4,7 @@ import uuid
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 class ChromaDBHelper:
     def __init__(self, persist_directory="./chroma_db", collection_name="kpi_knowledge"):

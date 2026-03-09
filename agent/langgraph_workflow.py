@@ -1,8 +1,12 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
 from langgraph.graph import StateGraph, END
 from vector_db.chroma_helper import chroma_db
 from chatbot.web_chatbot import web_chatbot
-from agent.tools import get_top_students, get_lowest_students
+from agent.tools import get_top_students, get_lowest_students, OD_SESSIONS
 from database.database import SessionLocal
 from database.models import User
 
@@ -13,11 +17,46 @@ class AgentState(Dict[str, Any]):
     user_email: str
     context: str
     response: str
-    image: str
+    image: Optional[str]
+    classification: str  # UTILITY or DETAILED
+    od_form: Dict[str, Optional[Any]]
 
 def parse_query_node(state: AgentState):
     """Initial node just normalizes the input state."""
-    print(f"[LangGraph] Received query: {state['query']} from {state['user_email']}")
+    print(f"[LangGraph] Received query from {state['user_email']}")
+    state["classification"] = "DETAILED"  # Default
+    
+    email = state.get("user_email")
+    if email and email in OD_SESSIONS:
+        state["od_form"] = OD_SESSIONS[email]
+    else:
+        state["od_form"] = {}
+        
+    return state
+
+def router_node(state: AgentState):
+    """
+    Uses utility_llm to classify the query. 
+    Optimization: skips heavy processing for simple requests.
+    """
+    query = state["query"].lower()
+    
+    # Fast path for very short greetings or status checks
+    if len(query) < 15 and any(word in query for word in ["hi", "hello", "hey", "ping", "status"]):
+        state["classification"] = "UTILITY"
+    else:
+        # Use utility_llm for more complex classification
+        prompt = f"Classify this student KPI query into 'UTILITY' (greetings, simple role checks, formatting) or 'DETAILED' (performance analysis, trends, data requests, advice).\n\nQuery: {state['query']}\n\nClassification (UTILITY/DETAILED):"
+        try:
+            res = web_chatbot.utility_llm.invoke(prompt)
+            content = res.content if isinstance(res.content, str) else str(res.content)
+            label = content.strip().upper()
+            state["classification"] = "DETAILED" if "DETAILED" in label else "UTILITY"
+        except Exception as e:
+            print(f"[LangGraph Router Error] {e}. Defaulting to DETAILED.")
+            state["classification"] = "DETAILED"
+            
+    print(f"[LangGraph Router] Classification: {state['classification']}")
     return state
 
 def retrieve_vector_context_node(state: AgentState):
@@ -87,12 +126,30 @@ workflow = StateGraph(AgentState)
 
 # Add nodes
 workflow.add_node("parse_query", parse_query_node)
+workflow.add_node("router", router_node)
 workflow.add_node("retrieve_vector_context", retrieve_vector_context_node)
 workflow.add_node("inject_live_kpi_context", inject_live_kpi_context_node)
 workflow.add_node("generate_response", generate_response_node)
 
+# Hybrid Routing Logic
+def route_classification(state: AgentState):
+    if state["classification"] == "UTILITY":
+        return "generate_response"
+    return "retrieve_vector_context"
+
 # Add edges connecting the nodes
-workflow.add_edge("parse_query", "retrieve_vector_context")
+workflow.add_edge("parse_query", "router")
+
+# Use conditional edges for Hybrid Routing
+workflow.add_conditional_edges(
+    "router",
+    route_classification,
+    {
+        "generate_response": "generate_response",
+        "retrieve_vector_context": "retrieve_vector_context"
+    }
+)
+
 workflow.add_edge("retrieve_vector_context", "inject_live_kpi_context")
 workflow.add_edge("inject_live_kpi_context", "generate_response")
 workflow.add_edge("generate_response", END)

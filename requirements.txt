@@ -20,4 +20,6 @@ apscheduler
 pillow
 numpy
 google-generativeai
+google-genai
+tenacity
 PyPDF2

@@ -1,8 +1,12 @@
 from langchain_core.tools import tool
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from database.database import SessionLocal
-from database.models import Student, Score, KPI, CertificateUpload, User
+from database.models import Student, Score, KPI, CertificateUpload, User, ODRequest
 from passlib.context import CryptContext
+from tenacity import retry, wait_exponential, stop_after_attempt
+import json
+from datetime import datetime
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -184,6 +188,169 @@ def add_mock_faculty(email: str, name: str, department: str) -> str:
     except Exception as e:
         db.rollback()
         return f"Database Error provisioning user: {str(e)}"
+# Global in-memory session store for OD forms
+OD_SESSIONS: Dict[str, Dict[str, Any]] = {}
+
+# OD Management Tools
+
+@tool
+@retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(3))
+def extract_od_details(
+    student_email: str,
+    college_name: Optional[str] = None,
+    event_details: Optional[str] = None,
+    date: Optional[str] = None,
+    start_time: Optional[str] = None,
+    end_time: Optional[str] = None,
+    num_days: Optional[int] = None
+) -> str:
+    """
+    Extracts On Duty (OD) application fields from a student's conversational input.
+    Use this tool whenever a student provides any details relating to an OD request.
+    Always pass the user's email as student_email.
+    """
+    if student_email not in OD_SESSIONS:
+        OD_SESSIONS[student_email] = {
+            "college_name": None,
+            "event_details": None,
+            "date": None,
+            "start_time": None,
+            "end_time": None,
+            "num_days": None
+        }
+        
+    session = OD_SESSIONS[student_email]
+    if college_name: session["college_name"] = college_name
+    if event_details: session["event_details"] = event_details
+    if date: session["date"] = date
+    if start_time: session["start_time"] = start_time
+    if end_time: session["end_time"] = end_time
+    if num_days is not None: session["num_days"] = num_days
+    
+    missing = [k for k, v in session.items() if v is None]
+    
+    return f"Extracted details saved. Current form state: {json.dumps(session)}. Missing fields: {missing}. Ask the user for the next missing field."
+
+@tool
+@retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(3))
+def apply_student_od(
+    student_email: str
+) -> str:
+    """
+    Formally submits a completed On Duty (OD) application to the database.
+    Only call this tool when ALL fields in the form state have been confirmed by the student.
+    Always pass the user's email as student_email.
+    """
+    db = SessionLocal()
+    try:
+        session = OD_SESSIONS.get(student_email)
+        if not session:
+            return "Error: No active OD form session found."
+            
+        missing = [k for k, v in session.items() if v is None]
+        if missing:
+            return f"Error: Cannot submit. Missing fields: {missing}"
+            
+        student = db.query(Student).filter(Student.email == student_email).first()
+        if not student:
+            return f"Error: Student not found with email {student_email}."
+            
+        od = ODRequest(
+            student_id=student.student_id,
+            student_name=student.name,
+            college_name=session["college_name"],
+            event_details=session["event_details"],
+            date=session["date"],
+            start_time=session["start_time"],
+            end_time=session["end_time"],
+            days=session["num_days"],
+            result_status="Pending Result"
+        )
+        db.add(od)
+        db.commit()
+        db.refresh(od)
+        
+        # Clear session after successful submission
+        OD_SESSIONS.pop(student_email, None)
+        
+        return f"✅ OD Request submitted successfully! OD ID: {od.id}. Faculty have been notified."
+    except Exception as e:
+        db.rollback()
+        return f"Database Error submitting OD request: {str(e)}"
     finally:
         db.close()
 
+@tool
+@retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(3))
+def get_od_summary_by_status(status: str) -> str:
+    """
+    Fetches a summary of student OD requests based on their status. 
+    Use this for Faculty/HOD monitoring.
+    Valid statuses: 'Pending Result', 'Awaiting Proof', 'Participated', 'Won'
+    """
+    db = SessionLocal()
+    try:
+        ods = db.query(ODRequest).filter(ODRequest.result_status == status).order_by(ODRequest.created_at.desc()).limit(10).all()
+        if not ods:
+            return f"No OD requests found with status: '{status}'."
+            
+        summary = [f"📊 OD Requests ({status}):"]
+        for od in ods:
+            summary.append(f"- ID {od.id}: {od.student_name} ({od.student_id}) at {od.college_name} for '{od.event_details}' on {od.date}.")
+        return "\\n".join(summary)
+    except Exception as e:
+        return f"Database error fetching ODs: {str(e)}"
+    finally:
+        db.close()
+
+@tool
+@retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(3))
+def get_student_od_history(student_id: str) -> str:
+    """
+    Fetches the entire On Duty (OD) participation history for a specific student_id.
+    Use this when Faculty asks about a particular student's OD track record.
+    """
+    db = SessionLocal()
+    try:
+        student_id = student_id.strip().upper()
+        ods = db.query(ODRequest).filter(ODRequest.student_id == student_id).order_by(ODRequest.created_at.desc()).all()
+        if not ods:
+            return f"No OD history found for student {student_id}."
+            
+        summary = [f"📜 OD History for {ods[0].student_name} ({student_id}):"]
+        for od in ods:
+            prize = f" | Prize: {od.prize_details}" if od.prize_details else ""
+            summary.append(f"- [OD {od.id}] {od.date}: {od.event_details} at {od.college_name} | Status: {od.result_status}{prize}")
+        return "\\n".join(summary)
+    except Exception as e:
+        return f"Database error fetching OD history: {str(e)}"
+    finally:
+        db.close()
+
+@tool
+@retry(wait=wait_exponential(multiplier=1, min=2, max=10), stop=stop_after_attempt(3))
+def verify_prize_details(od_id: int) -> str:
+    """
+    Fetches the specific prize details and verification status for an OD request.
+    Use this when Faculty wants to verify or detailed info about a specific OD/prize.
+    CRITICAL: This tool automatically triggers the UI Modal, so simply recount the text details.
+    """
+    db = SessionLocal()
+    try:
+        od = db.query(ODRequest).filter(ODRequest.id == od_id).first()
+        if not od:
+            return f"OD request #{od_id} not found."
+            
+        details = (
+            f"🔍 Verification Details for OD #{od_id} ({od.student_name}):\\n"
+            f"- Event: {od.event_details} at {od.college_name}\\n"
+            f"- Status: {od.result_status}\\n"
+            f"- Prize: {od.prize_details or 'None'}\\n"
+            f"- AI Verification: {od.verification_status or 'Pending'}\\n"
+            f'\\n{json.dumps({"action": "OPEN_MODAL", "target_id": f"od_{od_id}"})}'
+        )
+        return details
+    except Exception as e:
+        return f"Database error verifying prize: {str(e)}"
+    finally:
+        db.close()
