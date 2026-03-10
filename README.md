@@ -11,8 +11,8 @@ The heart of the system is a **Dual-Model Hybrid Routing** engine. This architec
 | Component | AI Model | Purpose |
 |---|---|---|
 | **Router Node** | `gemini-3.1-flash-lite` | Instant classification of user intent and role-based security checks. |
-| **Utility Agent** | `gemini-3.1-flash-lite` | High-speed data formatting and simple "On Duty" (OD) status updates. |
-| **Response Agent** | `gemini-3.1-flash-lite` | Deep analytical reasoning for career advice and performance summarization. |
+| **Utility Agent** | `gemini-1.5-flash` | High-speed data formatting and simple "On Duty" (OD) status updates. |
+| **Response Agent** | `gemini-1.5-pro` | Deep analytical reasoning for career advice and performance summarization. |
 
 ---
 
