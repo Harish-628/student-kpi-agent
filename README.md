@@ -1,3 +1,9 @@
+![Version](https://img.shields.io/badge/version-1.0.0-blue?style=flat-square)
+![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-009688)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Gemini](https://img.shields.io/badge/AI-Gemini%203.1-orange)
+
 # ⚡ NeuralKPI: Advanced AI Student-KPI Management System
 
 **NeuralKPI** is a production-grade academic performance tracking platform. It integrates generative AI, stateful multi-agent workflows, and a high-fidelity "Neural" UI to revolutionize how students manage activities and how faculty oversee department achievements.
