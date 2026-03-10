@@ -82,8 +82,6 @@ def _cross_reference_text(
         return True, "Gemini not configured — text check skipped"
     
     try:
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        
         check_prompt = f"""
 You are a certificate verification assistant. Analyze the following extracted certificate text 
 and determine if it matches the expected details.

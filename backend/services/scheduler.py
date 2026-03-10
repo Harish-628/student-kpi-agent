@@ -11,7 +11,6 @@ Shutdown: call `shutdown_scheduler()` on app teardown
 
 import logging
 from datetime import datetime, date
-from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,6 @@
 import chromadb
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import uuid
-import os
 from dotenv import load_dotenv
 
 load_dotenv(override=True)

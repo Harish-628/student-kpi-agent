@@ -11,21 +11,17 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 import csv
 import io
-import json
 import requests
 import os
-import uuid
-import time
 from backend.security.ela import analyze_image_tampering
 
 from database.database import get_db
-from database.models import Student, KPI, Score, User, Milestone, PerformanceHistory, EventCache, CertificateUpload
+from database.models import Student, KPI, Score, Milestone, PerformanceHistory, EventCache, CertificateUpload
 from backend.schemas import (
     StudentCreate, StudentUpdate, StudentResponse,
     KPIAdd, KPIUpdate, KPIResponse, CertificateManualUpload,
     ScoreResponse, MilestoneCreate, MilestoneResponse,
-    UserLoginRequest, UserLoginResponse, UserRegister, UserResponse,
-    DepartmentStats, YearStats, AnalyticsResponse, ComparisonMetrics
+    UserLoginRequest, UserLoginResponse, UserRegister, UserResponse
 )
 from backend.auth import (
     hash_password, verify_password, create_access_token,
@@ -433,7 +429,7 @@ def upload_manual_certificate(
                     overall_performance=kpi_score
                 ))
             db.commit()
-    except Exception as score_err:
+    except Exception:
         # Non-critical: don't fail the whole upload if score calc breaks
         pass
 
@@ -899,7 +895,7 @@ def process_chatbot_query(
                 }
                 
             ela_status_msg = f"[System Note: ELA Integrity Check Passed (Score: {ela_result['score']}). {ela_result['message']}]"
-        except Exception as e:
+        except Exception:
             import traceback
             traceback.print_exc()
             raise
@@ -1014,7 +1010,6 @@ def get_engagement_notifications(user_id: str, role: str):
             "type": "engagement"
         }]
     
-    from datetime import timedelta
     days_inactive = (datetime.utcnow() - last_login).days
     
     if days_inactive >= 2:
@@ -1043,7 +1038,7 @@ def get_realtime_notifications(user_id: str, role: str, db: Session = Depends(ge
         user_email = user_id if "@" in user_id else f"{user_id.lower()}@college.edu"
         user = MOCK_USERS.get(user_email)
         if user and user.get("last_login"):
-            from datetime import timedelta, datetime
+            from datetime import datetime
             days_inactive = (datetime.utcnow() - user.get("last_login")).days
             if days_inactive >= 2:
                 notifications.append({
@@ -1090,7 +1085,7 @@ def get_realtime_notifications(user_id: str, role: str, db: Session = Depends(ge
         ods = db.query(ODRequest).filter(ODRequest.result_status == "Pending Result").order_by(ODRequest.id.desc()).all()
         for od in ods:
             notifications.append({
-                "title": f"New OD Request 📩",
+                "title": "New OD Request 📩",
                 "message": f"{od.student_name} ({od.student_id}) requested OD for '{od.event_details}'.",
                 "type": "od",
                 "timestamp": f"For {od.date}"

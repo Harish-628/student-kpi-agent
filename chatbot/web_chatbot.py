@@ -1,18 +1,19 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import PromptTemplate
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 import os
 from dotenv import load_dotenv
-load_dotenv(override=True)
-from agent.tools import (
-    get_top_students, get_lowest_students, upload_certificate_kpi, add_mock_faculty,
-    extract_od_details, apply_student_od, get_od_summary_by_status, get_student_od_history, verify_prize_details
-)
+
 from google import genai
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core import exceptions
 from typing import Optional
+from agent.tools import (
+    get_top_students, get_lowest_students, upload_certificate_kpi, add_mock_faculty,
+    extract_od_details, apply_student_od, get_od_summary_by_status, get_student_od_history, verify_prize_details
+)
+
+load_dotenv(override=True)
 class WebChatbot:
     def __init__(self):
         self.api_key = os.environ.get("GEMINI_API_KEY")
@@ -159,8 +160,10 @@ Now, answer the User's Query.
             
             # Message formatting
             if image:
-                if "," in image: b64_data = image.split(",", 1)[1]
-                else: b64_data = image
+                if "," in image:
+                    b64_data = image.split(",", 1)[1]
+                else:
+                    b64_data = image
                 human_msg = HumanMessage(content=[
                     {"type": "text", "text": query},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_data}"}}
@@ -169,7 +172,7 @@ Now, answer the User's Query.
                 human_msg = HumanMessage(content=query)
             
             # 4. Invoke with Logging
-            print(f"[WebChatbot] Routing to RESPONSE_LLM (gemini-3.1-flash-preview)")
+            print("[WebChatbot] Routing to RESPONSE_LLM (gemini-3.1-flash-preview)")
             query_preview = str(query)[:50]
             print(f"[WebChatbot] Invoking agent for: {query_preview}...")
             

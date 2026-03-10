@@ -35,11 +35,11 @@ def run_server():
     try:
         os.chdir(FRONTEND_DIR)
         print(f"\n{'='*50}")
-        print(f"🌐 Student KPI Frontend Server")
+        print("🌐 Student KPI Frontend Server")
         print(f"{'='*50}")
         print(f"📍 URL: http://localhost:{PORT}")
         print(f"📁 Directory: {FRONTEND_DIR}")
-        print(f"✅ Server starting... Press Ctrl+C to stop\n")
+        print("✅ Server starting... Press Ctrl+C to stop\n")
         
         socketserver.TCPServer.allow_reuse_address = True
         with socketserver.TCPServer(("", PORT), CustomHTTPRequestHandler) as httpd:

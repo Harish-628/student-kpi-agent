@@ -1,7 +1,6 @@
 """
 KPI Engine for calculating student KPI scores and career readiness predictions.
 """
-import os
 
 def calculate_kpi_score(kpi_data):
     """
@@ -97,7 +96,6 @@ if __name__ == "__main__":
     ]
     
     print("--- KPI Engine Regression Test ---")
-    import sys
     # Set encoding to utf-8 for the test output to handle emojis on Windows
     # (Note: this purely affects the test execution output)
     for i, (data, expected_score, expected_readiness) in enumerate(test_cases, 1):

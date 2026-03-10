@@ -1,12 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from database.database import engine, Base
 from backend.api import routes
 from backend.api.od_routes import od_router
 from backend.services.scheduler import start_scheduler, shutdown_scheduler
-import os
 from datetime import datetime
 
 # This automatically creates your database tables!

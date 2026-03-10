@@ -1,11 +1,10 @@
 from langchain_core.tools import tool
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from database.database import SessionLocal
 from database.models import Student, Score, KPI, CertificateUpload, User, ODRequest
 from passlib.context import CryptContext
 from tenacity import retry, wait_exponential, stop_after_attempt
 import json
-from datetime import datetime
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -220,12 +219,18 @@ def extract_od_details(
         }
         
     session = OD_SESSIONS[student_email]
-    if college_name: session["college_name"] = college_name
-    if event_details: session["event_details"] = event_details
-    if date: session["date"] = date
-    if start_time: session["start_time"] = start_time
-    if end_time: session["end_time"] = end_time
-    if num_days is not None: session["num_days"] = num_days
+    if college_name:
+        session["college_name"] = college_name
+    if event_details:
+        session["event_details"] = event_details
+    if date:
+        session["date"] = date
+    if start_time:
+        session["start_time"] = start_time
+    if end_time:
+        session["end_time"] = end_time
+    if num_days is not None:
+        session["num_days"] = num_days
     
     missing = [k for k, v in session.items() if v is None]
     

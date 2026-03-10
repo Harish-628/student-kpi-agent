@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import List
 from database.database import get_db
-from database.models import ODRequest, Student, User
+from database.models import ODRequest, Student
 from backend.schemas import ODRequestCreate, ODResultSubmit, ODRequestResponse
 from backend.services.ocr_verification import verify_certificate
 from backend.services.fcm import send_faculty_notification

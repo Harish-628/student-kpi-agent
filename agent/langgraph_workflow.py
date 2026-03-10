@@ -1,14 +1,13 @@
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
-
 from langgraph.graph import StateGraph, END
 from vector_db.chroma_helper import chroma_db
 from chatbot.web_chatbot import web_chatbot
 from agent.tools import get_top_students, get_lowest_students, OD_SESSIONS
 from database.database import SessionLocal
 from database.models import User
+
+load_dotenv(override=True)
 
 # Define state dictionary schema for the LangGraph
 class AgentState(Dict[str, Any]):
