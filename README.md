@@ -9,10 +9,10 @@
 The heart of the system is a **Dual-Model Hybrid Routing** engine. This architecture ensures peak performance while strictly managing API quotas and reducing latency for real-time voice interaction.
 
 | Component | AI Model | Purpose |
-|---|-|---|
-| **Router Node** | `gemini-3.1-flash-lite-preview` | Instant classification of user intent and role-based security checks. |
-| **Utility Agent** | `gemini-3.1-flash-lite-preview` | High-speed data formatting and simple status updates. |
-| **Response Agent** | `gemini-3.1-flash-lite-preview` | Deep analytical reasoning for career advice and performance summarization. |
+|---|---|---|
+| **Router Node** | `gemini-3.1-flash-lite` | Instant classification of user intent and role-based security checks. |
+| **Utility Agent** | `gemini-3.1-flash-lite` | High-speed data formatting and simple "On Duty" (OD) status updates. |
+| **Response Agent** | `gemini-3.1-flash-lite` | Deep analytical reasoning for career advice and performance summarization. |
 
 ---
 
@@ -28,6 +28,8 @@ The heart of the system is a **Dual-Model Hybrid Routing** engine. This architec
 *   **Faculty Monitoring Dashboard:**
     *   **Voice-Activated Reporting:** Faculty can ask "Who is out?" to get a real-time verbal summary of pending requests.
     *   **Auto-Modal Verification:** When a faculty member asks to "see" a prize certificate, the AI sends a JSON trigger (`{"action": "OPEN_MODAL"}`) that automatically invokes the UI modal.
+
+---
 
 ### 🎨 Premium UI/UX Ecosystem
 *   **Glassmorphism Design:** A stunning dark-mode interface with multi-layered orb animations and vibrant neon accents.
@@ -65,6 +67,7 @@ Run the startup batch script to boot the FastAPI backend and the Neon Frontend s
 ```powershell
 .\RUN_START.bat
 ```
+
 *   **Backend API:** `http://localhost:8000`
 *   **Frontend UI:** `http://localhost:8080`
 
@@ -79,5 +82,4 @@ Run the startup batch script to boot the FastAPI backend and the Neon Frontend s
 
 ---
 
-## 📜 License
 Developed for **Kongunadu College of Engineering and Technology**. All Rights Reserved.
